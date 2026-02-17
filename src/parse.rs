@@ -19,10 +19,7 @@ static PREFIX_RE: LazyLock<Regex> =
 /// and `>>>` prefixes from error output.
 pub fn parse_line_ref(ref_str: &str) -> Result<LineRef, String> {
     // Strip display-format suffix, legacy suffix, leading >>> markers
-    let cleaned = ref_str
-        .split('|')
-        .next()
-        .unwrap_or(ref_str);
+    let cleaned = ref_str.split('|').next().unwrap_or(ref_str);
     // Strip legacy "  content" suffix
     let cleaned = if let Some(pos) = cleaned.find("  ") {
         &cleaned[..pos]
@@ -70,8 +67,7 @@ pub fn parse_line_ref(ref_str: &str) -> Result<LineRef, String> {
     ))
 }
 
-static COLON_WS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\s*:\s*").unwrap());
+static COLON_WS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s*:\s*").unwrap());
 
 #[cfg(test)]
 mod tests {
@@ -81,7 +77,10 @@ mod tests {
     fn parses_valid_reference() {
         assert_eq!(
             parse_line_ref("5:abcd").unwrap(),
-            LineRef { line: 5, hash: "abcd".into() }
+            LineRef {
+                line: 5,
+                hash: "abcd".into()
+            }
         );
     }
 
@@ -89,7 +88,10 @@ mod tests {
     fn parses_single_digit_hash() {
         assert_eq!(
             parse_line_ref("1:a").unwrap(),
-            LineRef { line: 1, hash: "a".into() }
+            LineRef {
+                line: 1,
+                hash: "a".into()
+            }
         );
     }
 
@@ -97,7 +99,10 @@ mod tests {
     fn parses_long_hash() {
         assert_eq!(
             parse_line_ref("100:abcdef0123456789").unwrap(),
-            LineRef { line: 100, hash: "abcdef0123456789".into() }
+            LineRef {
+                line: 100,
+                hash: "abcdef0123456789".into()
+            }
         );
     }
 
@@ -105,7 +110,10 @@ mod tests {
     fn strips_display_suffix() {
         assert_eq!(
             parse_line_ref("5:ab|some content").unwrap(),
-            LineRef { line: 5, hash: "ab".into() }
+            LineRef {
+                line: 5,
+                hash: "ab".into()
+            }
         );
     }
 
@@ -113,7 +121,10 @@ mod tests {
     fn strips_legacy_suffix() {
         assert_eq!(
             parse_line_ref("5:ab  some content").unwrap(),
-            LineRef { line: 5, hash: "ab".into() }
+            LineRef {
+                line: 5,
+                hash: "ab".into()
+            }
         );
     }
 
@@ -121,7 +132,10 @@ mod tests {
     fn strips_arrow_prefix() {
         assert_eq!(
             parse_line_ref(">>> 5:ab").unwrap(),
-            LineRef { line: 5, hash: "ab".into() }
+            LineRef {
+                line: 5,
+                hash: "ab".into()
+            }
         );
     }
 

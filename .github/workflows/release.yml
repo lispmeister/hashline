@@ -41,12 +41,16 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Generate man page (unix)
+        if: runner.os != 'Windows'
+        run: cargo run --bin mangen
+
       - name: Package (unix)
         if: runner.os != 'Windows'
         run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../${{ matrix.name }}.tar.gz hashline
-          cd ../../..
+          cp target/${{ matrix.target }}/release/hashline hashline
+          tar czf ${{ matrix.name }}.tar.gz hashline man/hashline.1
+          rm hashline
           shasum -a 256 ${{ matrix.name }}.tar.gz > ${{ matrix.name }}.tar.gz.sha256
 
       - name: Package (windows)

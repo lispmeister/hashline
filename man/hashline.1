@@ -1,0 +1,31 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH hashline 1  "hashline 0.1.0" 
+.SH NAME
+hashline \- Line\-addressable file editing with content hashes
+.SH SYNOPSIS
+\fBhashline\fR [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Line\-addressable file editing with content hashes
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+hashline\-read(1)
+Read a file and output hashline\-formatted content
+.TP
+hashline\-apply(1)
+Apply hashline edits from stdin JSON to a file
+.TP
+hashline\-hash(1)
+Output line hashes for a file
+.TP
+hashline\-help(1)
+Print this message or the help of the given subcommand(s)
+.SH VERSION
+v0.1.0

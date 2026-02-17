@@ -1,39 +1,16 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use std::io::Read;
 use std::process;
 
-mod hash;
-mod format;
-mod parse;
-mod error;
-mod heuristics;
+mod cli;
 mod edit;
+mod error;
+mod format;
+mod hash;
+mod heuristics;
+mod parse;
 
-#[derive(Parser)]
-#[command(name = "hashline", about = "Line-addressable file editing with content hashes")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Read a file and output hashline-formatted content
-    Read {
-        /// File path to read
-        file: String,
-        /// Starting line number (1-indexed, default 1)
-        #[arg(long, default_value_t = 1)]
-        start_line: usize,
-    },
-    /// Apply hashline edits from stdin JSON to a file
-    Apply,
-    /// Output line hashes for a file
-    Hash {
-        /// File path to hash
-        file: String,
-    },
-}
+use cli::{Cli, Commands};
 
 fn main() {
     let cli = Cli::parse();

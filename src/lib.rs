@@ -1,12 +1,12 @@
-pub mod hash;
-pub mod format;
-pub mod parse;
-pub mod error;
-pub mod heuristics;
 pub mod edit;
+pub mod error;
+pub mod format;
+pub mod hash;
+pub mod heuristics;
+pub mod parse;
 
-pub use hash::compute_line_hash;
-pub use format::format_hashlines;
-pub use parse::{parse_line_ref, LineRef};
+pub use edit::{apply_hashline_edits, ApplyResult, HashlineEdit, HashlineParams};
 pub use error::{HashMismatch, HashlineMismatchError};
-pub use edit::{apply_hashline_edits, HashlineEdit, HashlineParams, ApplyResult};
+pub use format::format_hashlines;
+pub use hash::compute_line_hash;
+pub use parse::{parse_line_ref, LineRef};

@@ -75,6 +75,14 @@ chmod +x "${PREFIX}/${BINARY}"
 
 echo "Installed ${BINARY} to ${PREFIX}/${BINARY}"
 
+# Install man page if present in tarball
+if [ -f "${TMPDIR}/man/hashline.1" ]; then
+  MANDIR="${HOME}/.local/share/man/man1"
+  mkdir -p "$MANDIR"
+  cp "${TMPDIR}/man/hashline.1" "${MANDIR}/hashline.1"
+  echo "Installed man page to ${MANDIR}/hashline.1"
+fi
+
 # Check PATH
 case ":$PATH:" in
   *":${PREFIX}:"*) ;;

@@ -1,6 +1,6 @@
-use hashline::{apply_hashline_edits, compute_line_hash, format_hashlines, parse_line_ref};
-use hashline::edit::{SetLineOp, InsertAfterOp};
+use hashline::edit::{InsertAfterOp, SetLineOp};
 use hashline::HashlineEdit;
+use hashline::{apply_hashline_edits, compute_line_hash, format_hashlines, parse_line_ref};
 use std::time::Instant;
 
 fn generate_file(num_lines: usize) -> String {
@@ -69,10 +69,7 @@ fn main() {
             }
         });
         let ns_per_line = us * 1000.0 / size as f64;
-        println!(
-            "| {:>8} | {:>12.1} | {:>12.1} |",
-            size, us, ns_per_line
-        );
+        println!("| {:>8} | {:>12.1} | {:>12.1} |", size, us, ns_per_line);
     }
 
     // --- parse_line_ref ---
@@ -94,17 +91,11 @@ fn main() {
     });
     let calls = iters * refs.len();
     let ns_per_call = us * 1000.0 / calls as f64;
-    println!(
-        "| {:>12} | {:>12.1} | {:>12.2} |",
-        calls, us, ns_per_call
-    );
+    println!("| {:>12} | {:>12.1} | {:>12.2} |", calls, us, ns_per_call);
 
     // --- apply_hashline_edits ---
     println!("\n## apply_hashline_edits\n");
-    println!(
-        "| {:>8} | {:>6} | {:>12} |",
-        "Lines", "Edits", "Time (us)"
-    );
+    println!("| {:>8} | {:>6} | {:>12} |", "Lines", "Edits", "Time (us)");
     println!("|{:-<10}|{:-<8}|{:-<14}|", "", "", "");
 
     for &size in &sizes {
@@ -133,10 +124,7 @@ fn main() {
             let us = bench("apply_edits", 50, || {
                 let _ = apply_hashline_edits(&content, &edits);
             });
-            println!(
-                "| {:>8} | {:>6} | {:>12.1} |",
-                size, num_edits, us
-            );
+            println!("| {:>8} | {:>6} | {:>12.1} |", size, num_edits, us);
         }
     }
 
@@ -174,10 +162,7 @@ fn main() {
             let us = bench("apply_inserts", 50, || {
                 let _ = apply_hashline_edits(&content, &edits);
             });
-            println!(
-                "| {:>8} | {:>6} | {:>12.1} |",
-                size, num_edits, us
-            );
+            println!("| {:>8} | {:>6} | {:>12.1} |", size, num_edits, us);
         }
     }
 }
