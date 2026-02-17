@@ -1,0 +1,18 @@
+{
+  "name": "insert_after_specific_line",
+  "description": "Insert a new use statement after line 1 — hashline has native insert_after, raw mode must use fragile context matching",
+  "original_content": "use std::io;\n\nfn main() {\n    println!(\"hello\");\n}",
+  "expected_content": "use std::io;\nuse std::fs;\n\nfn main() {\n    println!(\"hello\");\n}",
+  "hashline_edits": [
+    {
+      "insert_after": {
+        "anchor": "1:a4",
+        "text": "use std::fs;"
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "use std::io;\n",
+    "new_text": "use std::io;\nuse std::fs;\n"
+  }
+}

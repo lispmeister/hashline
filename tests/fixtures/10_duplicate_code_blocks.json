@@ -1,0 +1,19 @@
+{
+  "name": "edit_near_duplicate_code_blocks",
+  "description": "Two identical 'if check()' blocks — raw mode matches the first, but we want to edit the second (line 7). Hashline uses line:hash anchor.",
+  "original_content": "fn foo() {\n    if check() {\n        return Ok(());\n    }\n    process();\n    if check() {\n        return Err(());\n    }\n}",
+  "expected_content": "fn foo() {\n    if check() {\n        return Ok(());\n    }\n    process();\n    if check() {\n        return Err(\"failed\");\n    }\n}",
+  "hashline_edits": [
+    {
+      "set_line": {
+        "anchor": "7:ec",
+        "new_text": "        return Err(\"failed\");"
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "        return Err(());",
+    "new_text": "        return Err(\"failed\");"
+  },
+  "raw_edit_note": "Only works because return Err(()) is unique. If both blocks had identical bodies, raw mode would fail."
+}

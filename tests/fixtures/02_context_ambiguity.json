@@ -1,0 +1,19 @@
+{
+  "name": "multi_line_replace_context_ambiguity",
+  "description": "Two functions with identical structure — raw old_text matches the wrong one, hashline uses anchors to target correctly",
+  "original_content": "fn process(data: &[u8]) -> Vec<u8> {\n    let result = Vec::new();\n    for item in data {\n        result.push(item * 2);\n    }\n    result\n}\n\nfn transform(data: &[u8]) -> Vec<u8> {\n    let result = Vec::new();\n    for item in data {\n        result.push(item * 3);\n    }\n    result\n}",
+  "expected_content": "fn process(data: &[u8]) -> Vec<u8> {\n    let result = Vec::new();\n    for item in data {\n        result.push(item * 2);\n    }\n    result\n}\n\nfn transform(data: &[u8]) -> Vec<u8> {\n    let mut result = Vec::with_capacity(data.len());\n    for item in data {\n        result.push(item * 3);\n    }\n    result\n}",
+  "hashline_edits": [
+    {
+      "set_line": {
+        "anchor": "10:0f",
+        "new_text": "    let mut result = Vec::with_capacity(data.len());"
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "    let result = Vec::new();",
+    "new_text": "    let mut result = Vec::with_capacity(data.len());"
+  },
+  "raw_edit_note": "Matches line 2 first (wrong function), not line 10"
+}

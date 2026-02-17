@@ -1,0 +1,19 @@
+{
+  "name": "large_range_replacement",
+  "description": "Replace 12 lines (lines 2-13) with 3 new lines — raw mode must match all 12 lines exactly",
+  "original_content": "// header\nline1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12\n// footer",
+  "expected_content": "// header\nnew_line_a\nnew_line_b\nnew_line_c\n// footer",
+  "hashline_edits": [
+    {
+      "replace_lines": {
+        "start_anchor": "2:02",
+        "end_anchor": "13:b3",
+        "new_text": "new_line_a\nnew_line_b\nnew_line_c"
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12",
+    "new_text": "new_line_a\nnew_line_b\nnew_line_c"
+  }
+}

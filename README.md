@@ -143,6 +143,27 @@ curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.s
 curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --prefix /usr/local
 ```
 
+## Testing
+
+```sh
+# Run all tests (unit + integration + comparison fixtures)
+cargo test
+
+# Run only the LLM comparison fixtures (hashline vs raw search-replace)
+cargo test --test comparison
+
+# Run comparison fixtures with the summary table printed
+cargo test --test comparison -- --nocapture
+
+# Run a single fixture by name
+cargo test --test comparison fixture_04_indentation_sensitive
+
+# Run performance benchmarks (100 / 1K / 10K line files)
+cargo run --release --bin bench
+```
+
+The comparison test suite loads 10 fixture scenarios from `tests/fixtures/` and applies each edit two ways: via hashline anchors and via naive string replacement. It prints a pass/fail summary table showing where hashline succeeds and raw mode fails (ambiguity, indentation, etc.).
+
 ## License
 
 MIT

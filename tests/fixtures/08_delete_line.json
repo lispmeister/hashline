@@ -1,0 +1,19 @@
+{
+  "name": "delete_debug_lines",
+  "description": "Delete two debug lines (TODO comment and dbg! call) — both modes work",
+  "original_content": "fn main() {\n    // TODO: remove this debug line\n    dbg!(\"debug\");\n    println!(\"hello\");\n}",
+  "expected_content": "fn main() {\n    println!(\"hello\");\n}",
+  "hashline_edits": [
+    {
+      "replace_lines": {
+        "start_anchor": "2:63",
+        "end_anchor": "3:1c",
+        "new_text": ""
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "    // TODO: remove this debug line\n    dbg!(\"debug\");\n",
+    "new_text": ""
+  }
+}

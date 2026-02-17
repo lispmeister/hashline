@@ -1,0 +1,19 @@
+{
+  "name": "indentation_sensitive_edit",
+  "description": "Raw mode produces replacement with wrong indentation level, hashline preserves original indent via heuristics",
+  "original_content": "fn example() {\n    if true {\n        let x = 1;\n    }\n}",
+  "expected_content": "fn example() {\n    if true {\n        let x = 2;\n    }\n}",
+  "hashline_edits": [
+    {
+      "set_line": {
+        "anchor": "3:bd",
+        "new_text": "let x = 2;"
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "        let x = 1;",
+    "new_text": "    let x = 2;"
+  },
+  "raw_edit_note": "Raw mode uses wrong indentation (4 spaces instead of 8)"
+}

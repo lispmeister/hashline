@@ -1,0 +1,19 @@
+{
+  "name": "edit_among_many_similar_lines",
+  "description": "File has 5 nearly identical lines — raw mode cannot distinguish which to edit, hashline targets line 4 by anchor",
+  "original_content": "    items.push(value);\n    items.push(value);\n    items.push(value);\n    items.push(count);\n    items.push(value);",
+  "expected_content": "    items.push(value);\n    items.push(value);\n    items.push(value);\n    items.push(total);\n    items.push(value);",
+  "hashline_edits": [
+    {
+      "set_line": {
+        "anchor": "4:8f",
+        "new_text": "    items.push(total);"
+      }
+    }
+  ],
+  "raw_edit": {
+    "old_text": "    items.push(count);",
+    "new_text": "    items.push(total);"
+  },
+  "raw_edit_note": "This one actually works because count is unique — but imagine if it were value"
+}

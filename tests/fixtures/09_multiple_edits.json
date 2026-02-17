@@ -1,0 +1,31 @@
+{
+  "name": "multiple_non_overlapping_edits",
+  "description": "Change constants A, C, and E simultaneously — raw mode must apply 3 replacements in correct order, hashline handles automatically",
+  "original_content": "const A: i32 = 1;\nconst B: i32 = 2;\nconst C: i32 = 3;\nconst D: i32 = 4;\nconst E: i32 = 5;",
+  "expected_content": "const A: i32 = 10;\nconst B: i32 = 2;\nconst C: i32 = 30;\nconst D: i32 = 4;\nconst E: i32 = 50;",
+  "hashline_edits": [
+    {
+      "set_line": {
+        "anchor": "1:af",
+        "new_text": "const A: i32 = 10;"
+      }
+    },
+    {
+      "set_line": {
+        "anchor": "3:d2",
+        "new_text": "const C: i32 = 30;"
+      }
+    },
+    {
+      "set_line": {
+        "anchor": "5:67",
+        "new_text": "const E: i32 = 50;"
+      }
+    }
+  ],
+  "raw_edits": [
+    { "old_text": "const A: i32 = 1;", "new_text": "const A: i32 = 10;" },
+    { "old_text": "const C: i32 = 3;", "new_text": "const C: i32 = 30;" },
+    { "old_text": "const E: i32 = 5;", "new_text": "const E: i32 = 50;" }
+  ]
+}

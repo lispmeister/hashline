@@ -1,0 +1,21 @@
+{
+  "name": "edit_after_file_modified",
+  "description": "File was modified between formatting and editing — line 2 changed, hashline detects hash mismatch and fails safely",
+  "original_content": "let config = load_config();\nlet db = connect(config.clone());\nrun(db);",
+  "expected_content": null,
+  "hashline_edits": [
+    {
+      "set_line": {
+        "anchor": "2:65",
+        "new_text": "let db = connect(config.unwrap());"
+      }
+    }
+  ],
+  "hashline_should_fail": true,
+  "hashline_fail_reason": "Hash 65 was computed for original 'let db = connect(config);' but file now has 'let db = connect(config.clone());' with hash 7e",
+  "raw_edit": {
+    "old_text": "let db = connect(config);",
+    "new_text": "let db = connect(config.unwrap());"
+  },
+  "raw_edit_note": "Raw mode silently applies to stale content — old_text not found, fails or applies to wrong spot"
+}
