@@ -32,17 +32,28 @@ Models edit by referencing anchors (`2:f1`) rather than reproducing text. Benchm
 
 ### From release binary
 
+Detects your platform, downloads the binary, and verifies the SHA256 checksum:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh
 ```
 
-Or download directly from [Releases](https://github.com/lispmeister/hashline/releases) and place the binary on your `PATH`.
-
-### Homebrew (planned)
+Options:
 
 ```sh
-brew install lispmeister/tap/hashline
+# Custom install directory (default: ~/.local/bin)
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --prefix /usr/local/bin
+
+# Specific version
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --version v0.1.0
 ```
+
+Pre-built binaries are available for:
+- macOS (Apple Silicon, Intel)
+- Linux (x86_64, ARM64)
+- Windows (x86_64)
+
+Or download directly from [Releases](https://github.com/lispmeister/hashline/releases).
 
 ### From source
 
@@ -129,18 +140,6 @@ For all code edits, use the hashline CLI via Bash instead of the built-in Edit t
 - On hash mismatch errors (exit code 1), copy the updated LINE:HASH refs from stderr and retry
 - Each edit call validates all anchors against the original file state before mutating
 - Edits are applied atomically — if any anchor fails validation, no changes are made
-```
-
-## Install Script
-
-The `install.sh` script detects your platform and installs the appropriate binary:
-
-```sh
-# Default install to ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh
-
-# Custom install directory
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --prefix /usr/local
 ```
 
 ## Testing
