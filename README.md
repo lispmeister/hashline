@@ -1,5 +1,11 @@
 # Hashline
 
+[![CI](https://github.com/lispmeister/hashline/actions/workflows/release.yml/badge.svg)](https://github.com/lispmeister/hashline/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/v/release/lispmeister/hashline)](https://github.com/lispmeister/hashline/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![Changelog](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-orange)](CHANGELOG.md)
+
 A content-addressable line editing tool for AI coding assistants. Instead of requiring models to reproduce exact text for edits, Hashline tags each line with a short hash anchor — models reference lines by `LINE:HASH` instead of matching verbatim content.
 
 Based on the [Hashline concept by Can Bölük](https://blog.can.ac/2026/02/12/the-harness-problem/), which identifies the "harness problem" — the interface between model output and workspace edits is where most practical failures occur, not in the model's reasoning.

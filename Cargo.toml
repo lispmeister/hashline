@@ -2,6 +2,7 @@
 name = "hashline"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 xxhash-rust = { version = "0.8", features = ["xxh32"] }
