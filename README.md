@@ -131,22 +131,17 @@ Retry with the updated anchor (`4:c9` instead of `4:01`).
 hashline hash src/main.rs
 ```
 
-## Claude Code Integration
+## Agent Integration
 
-Add to your project's `CLAUDE.md` (or globally to `~/.claude/CLAUDE.md`):
+Hashline works with any AI coding agent that accepts system-prompt instructions (Claude Code, Cursor, Windsurf, etc.).
 
-```markdown
-# Editing files
+To enable hashline in your project:
 
-For all code edits, use the hashline CLI via Bash instead of the built-in Edit tool:
+1. Install the `hashline` binary (see [Install](#install) above)
+2. Open [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) and copy the section below the `---` line
+3. Paste it into your project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent instructions file
 
-- **Read**: `hashline read <file>` — returns LINE:HASH|content format
-- **Edit**: `echo '{"path":"<file>","edits":[...]}' | hashline apply`
-- After every edit, re-read before editing the same file again (hashes changed)
-- On hash mismatch errors (exit code 1), copy the updated LINE:HASH refs from stderr and retry
-- Each edit call validates all anchors against the original file state before mutating
-- Edits are applied atomically — if any anchor fails validation, no changes are made
-```
+The template covers the full workflow: reading files, applying edits with heredoc syntax, batching multiple edits, and recovering from hash mismatches.
 
 ## Testing
 
