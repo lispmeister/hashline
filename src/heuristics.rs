@@ -21,8 +21,9 @@ fn strip_diff_plus(s: &str) -> String {
 }
 
 /// Unicode confusable hyphens
-static CONFUSABLE_HYPHENS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("[\u{2010}\u{2011}\u{2012}\u{2013}\u{2014}\u{2212}\u{FE63}\u{FF0D}]").unwrap());
+static CONFUSABLE_HYPHENS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new("[\u{2010}\u{2011}\u{2012}\u{2013}\u{2014}\u{2212}\u{FE63}\u{FF0D}]").unwrap()
+});
 
 /// Check if a string contains confusable hyphens.
 pub fn has_confusable_hyphens(s: &str) -> bool {
@@ -35,7 +36,10 @@ pub fn normalize_confusable_hyphens(s: &str) -> String {
 }
 
 pub fn normalize_confusable_hyphens_in_lines(lines: &[String]) -> Vec<String> {
-    lines.iter().map(|l| normalize_confusable_hyphens(l)).collect()
+    lines
+        .iter()
+        .map(|l| normalize_confusable_hyphens(l))
+        .collect()
 }
 
 fn strip_all_whitespace(s: &str) -> String {
@@ -77,7 +81,9 @@ fn strip_trailing_continuation_tokens(s: &str) -> String {
 }
 
 fn strip_merge_operator_chars(s: &str) -> String {
-    s.chars().filter(|c| !matches!(c, '|' | '&' | '?')).collect()
+    s.chars()
+        .filter(|c| !matches!(c, '|' | '&' | '?'))
+        .collect()
 }
 
 /// Strip hashline display prefixes and diff `+` markers from replacement lines.
@@ -141,7 +147,11 @@ pub fn restore_indent_for_paired_replacement(
         }
         out.push(restored);
     }
-    if changed { out } else { new_lines.to_vec() }
+    if changed {
+        out
+    } else {
+        new_lines.to_vec()
+    }
 }
 
 /// Undo pure formatting rewrites where the model reflows a single logical line
@@ -154,7 +164,9 @@ pub fn restore_old_wrapped_lines(old_lines: &[String], new_lines: &[String]) -> 
     let mut canon_to_old: HashMap<String, (String, usize)> = HashMap::new();
     for line in old_lines {
         let canon = strip_all_whitespace(line);
-        let entry = canon_to_old.entry(canon).or_insert_with(|| (line.clone(), 0));
+        let entry = canon_to_old
+            .entry(canon)
+            .or_insert_with(|| (line.clone(), 0));
         entry.1 += 1;
     }
 
@@ -207,7 +219,10 @@ pub fn restore_old_wrapped_lines(old_lines: &[String], new_lines: &[String]) -> 
 
     let mut out: Vec<String> = new_lines.to_vec();
     for c in sorted {
-        out.splice(c.start..c.start + c.len, std::iter::once(c.replacement.clone()));
+        out.splice(
+            c.start..c.start + c.len,
+            std::iter::once(c.replacement.clone()),
+        );
     }
     out
 }
@@ -248,10 +263,11 @@ pub fn strip_range_boundary_echo(
 
     // Check if last dst line echoes line after the range
     let after_idx = end_line; // 0-indexed = end_line (since end_line is 1-indexed)
-    if after_idx < file_lines.len() && !out.is_empty() {
-        if equals_ignoring_whitespace(out.last().unwrap(), &file_lines[after_idx]) {
-            out.pop();
-        }
+    if after_idx < file_lines.len()
+        && !out.is_empty()
+        && equals_ignoring_whitespace(out.last().unwrap(), &file_lines[after_idx])
+    {
+        out.pop();
     }
 
     out
@@ -319,7 +335,8 @@ pub fn maybe_expand_single_line_merge(
             if !prev_looks_like_continuation {
                 return None;
             }
-            let a = new_canon_for_merge_ops.find(&strip_merge_operator_chars(&prev_canon_for_match));
+            let a =
+                new_canon_for_merge_ops.find(&strip_merge_operator_chars(&prev_canon_for_match));
             let b = new_canon_for_merge_ops.find(&orig_canon_for_merge_ops);
             if let (Some(a), Some(b)) = (a, b) {
                 if a < b && new_canon.len() <= prev_canon.len() + orig_canon.len() + 32 {

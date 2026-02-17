@@ -15,6 +15,7 @@ struct RawEdit {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct Fixture {
     name: String,
     description: String,
@@ -88,9 +89,10 @@ fn comparison_all_fixtures() {
             hashline_result.is_err()
         } else {
             match &hashline_result {
-                Ok(r) => {
-                    fixture.expected_content.as_ref().is_some_and(|exp| r.content == *exp)
-                }
+                Ok(r) => fixture
+                    .expected_content
+                    .as_ref()
+                    .is_some_and(|exp| r.content == *exp),
                 Err(_) => false,
             }
         };
@@ -118,20 +120,12 @@ fn comparison_all_fixtures() {
             }
         };
 
-        results.push((
-            fixture.name.clone(),
-            hashline_ok,
-            raw_ok,
-            filename.clone(),
-        ));
+        results.push((fixture.name.clone(), hashline_ok, raw_ok, filename.clone()));
     }
 
     // Print summary table
     println!("\n{}", "=".repeat(80));
-    println!(
-        "{:<45} {:>10} {:>10}",
-        "Scenario", "Hashline", "Raw"
-    );
+    println!("{:<45} {:>10} {:>10}", "Scenario", "Hashline", "Raw");
     println!("{}", "-".repeat(80));
 
     let mut hashline_pass = 0;
@@ -159,11 +153,7 @@ fn comparison_all_fixtures() {
 
     // Assert all hashline edits pass
     for (name, h_ok, _, filename) in &results {
-        assert!(
-            h_ok,
-            "Hashline edit FAILED for '{}' ({})",
-            name, filename
-        );
+        assert!(h_ok, "Hashline edit FAILED for '{}' ({})", name, filename);
     }
 }
 
@@ -234,9 +224,8 @@ fn run_fixture(filename: &str) {
             fixture.name
         );
     } else {
-        let result = result.unwrap_or_else(|e| {
-            panic!("Hashline edit failed for '{}': {}", fixture.name, e)
-        });
+        let result =
+            result.unwrap_or_else(|e| panic!("Hashline edit failed for '{}': {}", fixture.name, e));
         let expected = fixture.expected_content.as_ref().unwrap();
         assert_eq!(
             result.content, *expected,

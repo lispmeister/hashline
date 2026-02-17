@@ -82,19 +82,37 @@ fn format_round_trip() {
 #[test]
 fn parse_valid_ref() {
     let r = parse_line_ref("5:abcd").unwrap();
-    assert_eq!(r, LineRef { line: 5, hash: "abcd".into() });
+    assert_eq!(
+        r,
+        LineRef {
+            line: 5,
+            hash: "abcd".into()
+        }
+    );
 }
 
 #[test]
 fn parse_single_digit_hash() {
     let r = parse_line_ref("1:a").unwrap();
-    assert_eq!(r, LineRef { line: 1, hash: "a".into() });
+    assert_eq!(
+        r,
+        LineRef {
+            line: 1,
+            hash: "a".into()
+        }
+    );
 }
 
 #[test]
 fn parse_long_hash() {
     let r = parse_line_ref("100:abcdef0123456789").unwrap();
-    assert_eq!(r, LineRef { line: 100, hash: "abcdef0123456789".into() });
+    assert_eq!(
+        r,
+        LineRef {
+            line: 100,
+            hash: "abcdef0123456789".into()
+        }
+    );
 }
 
 #[test]
@@ -340,7 +358,7 @@ fn heuristic_strips_insert_anchor_echo() {
 
 #[test]
 fn heuristic_strips_range_boundary_echo() {
-    let lines = vec![
+    let content = [
         "import { foo } from 'x';",
         "if (cond) {",
         "  doA();",
@@ -348,16 +366,23 @@ fn heuristic_strips_range_boundary_echo() {
         "  doB();",
         "}",
         "after();",
-    ];
-    let content = lines.join("\n");
+    ]
+    .join("\n");
 
     let edits = vec![HashlineEdit::ReplaceLines {
         replace_lines: hashline::edit::ReplaceLinesOp {
             start_anchor: make_ref(2, "if (cond) {"),
             end_anchor: Some(make_ref(6, "}")),
             new_text: Some(
-                ["if (cond) {", "  doA();", "} else {", "  doB();", "}", "after();"]
-                    .join("\n"),
+                [
+                    "if (cond) {",
+                    "  doA();",
+                    "} else {",
+                    "  doB();",
+                    "}",
+                    "after();",
+                ]
+                .join("\n"),
             ),
         },
     }];
@@ -376,8 +401,16 @@ fn heuristic_restores_wrapped_line() {
         set_line: hashline::edit::SetLineOp {
             anchor: make_ref(2, long_line),
             new_text: [
-                "const", "options", "=", "veryLongIdentifier", "+", "anotherLongIdentifier",
-                "+", "thirdLongIdentifier", "+", "fourthLongIdentifier;",
+                "const",
+                "options",
+                "=",
+                "veryLongIdentifier",
+                "+",
+                "anotherLongIdentifier",
+                "+",
+                "thirdLongIdentifier",
+                "+",
+                "fourthLongIdentifier;",
             ]
             .join("\n"),
         },
@@ -388,7 +421,8 @@ fn heuristic_restores_wrapped_line() {
 
 #[test]
 fn heuristic_merge_absorbed_next_line() {
-    let content = "    typeof HOOK === 'undefined' &&\n    typeof HOOK.checkDCE !== 'function'\ntail();";
+    let content =
+        "    typeof HOOK === 'undefined' &&\n    typeof HOOK.checkDCE !== 'function'\ntail();";
     let edits = vec![HashlineEdit::SetLine {
         set_line: hashline::edit::SetLineOp {
             anchor: make_ref(1, "    typeof HOOK === 'undefined' &&"),
@@ -458,7 +492,10 @@ fn heuristic_normalize_confusable_hyphens_on_noop() {
         },
     }];
     let result = apply_hashline_edits(content, &edits).unwrap();
-    assert_eq!(result.content, "aaa\ndevtools-unsupported-bridge-protocol\nccc");
+    assert_eq!(
+        result.content,
+        "aaa\ndevtools-unsupported-bridge-protocol\nccc"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -593,10 +630,7 @@ fn error_collects_all_mismatches() {
     let mismatch = err.downcast_ref::<HashlineMismatchError>().unwrap();
     assert_eq!(mismatch.mismatches.len(), 2);
     let msg = mismatch.format_message();
-    let marker_lines: Vec<&str> = msg
-        .split('\n')
-        .filter(|l| l.starts_with(">>>"))
-        .collect();
+    let marker_lines: Vec<&str> = msg.split('\n').filter(|l| l.starts_with(">>>")).collect();
     assert_eq!(marker_lines.len(), 2);
 }
 
@@ -677,7 +711,9 @@ fn error_reject_replace_edit() {
         },
     }];
     let err = apply_hashline_edits(content, &edits).unwrap_err();
-    assert!(err.to_string().contains("replace edits are applied separately"));
+    assert!(err
+        .to_string()
+        .contains("replace edits are applied separately"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -699,7 +735,8 @@ fn json_deserialize_set_line() {
 
 #[test]
 fn json_deserialize_params() {
-    let json = r#"{"path":"/tmp/test.rs","edits":[{"set_line":{"anchor":"1:ab","new_text":"hi"}}]}"#;
+    let json =
+        r#"{"path":"/tmp/test.rs","edits":[{"set_line":{"anchor":"1:ab","new_text":"hi"}}]}"#;
     let params: hashline::HashlineParams = serde_json::from_str(json).unwrap();
     assert_eq!(params.path, "/tmp/test.rs");
     assert_eq!(params.edits.len(), 1);

@@ -3,6 +3,7 @@ use std::fmt;
 
 /// A single hash mismatch found during validation.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct HashMismatch {
     pub line: usize,
     pub expected: String,
@@ -81,6 +82,7 @@ impl HashlineMismatchError {
     }
 
     /// Build a map from old "LINE:HASH" → new "LINE:HASH" for each mismatch.
+    #[allow(dead_code)]
     pub fn remaps(&self) -> std::collections::HashMap<String, String> {
         let mut map = std::collections::HashMap::new();
         for m in &self.mismatches {

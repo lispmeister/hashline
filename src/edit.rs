@@ -19,6 +19,7 @@ pub enum HashlineEdit {
         insert_after: InsertAfterOp,
     },
     Replace {
+        #[allow(dead_code)]
         replace: ReplaceOp,
     },
 }
@@ -44,6 +45,7 @@ pub struct InsertAfterOp {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct ReplaceOp {
     pub old_text: String,
     pub new_text: String,
@@ -58,6 +60,7 @@ pub struct HashlineParams {
 
 /// Result of applying edits.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ApplyResult {
     pub content: String,
     pub first_changed_line: Option<usize>,
@@ -66,6 +69,7 @@ pub struct ApplyResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct NoopEdit {
     pub edit_index: usize,
     pub loc: String,
@@ -74,9 +78,20 @@ pub struct NoopEdit {
 
 // Internal parsed refs
 enum ParsedRefs {
-    Single { line: usize, hash: String },
-    Range { start_line: usize, start_hash: String, end_line: usize, end_hash: String },
-    InsertAfter { line: usize, hash: String },
+    Single {
+        line: usize,
+        hash: String,
+    },
+    Range {
+        start_line: usize,
+        start_hash: String,
+        end_line: usize,
+        end_hash: String,
+    },
+    InsertAfter {
+        line: usize,
+        hash: String,
+    },
 }
 
 struct ParsedEdit {
@@ -88,17 +103,35 @@ fn parse_hashline_edit(edit: &HashlineEdit) -> Result<(ParsedRefs, String), Stri
     match edit {
         HashlineEdit::SetLine { set_line } => {
             let r = parse_line_ref(&set_line.anchor)?;
-            Ok((ParsedRefs::Single { line: r.line, hash: r.hash }, set_line.new_text.clone()))
+            Ok((
+                ParsedRefs::Single {
+                    line: r.line,
+                    hash: r.hash,
+                },
+                set_line.new_text.clone(),
+            ))
         }
         HashlineEdit::ReplaceLines { replace_lines } => {
             let start = parse_line_ref(&replace_lines.start_anchor)?;
             let new_text = replace_lines.new_text.clone().unwrap_or_default();
             match &replace_lines.end_anchor {
-                None => Ok((ParsedRefs::Single { line: start.line, hash: start.hash }, new_text)),
+                None => Ok((
+                    ParsedRefs::Single {
+                        line: start.line,
+                        hash: start.hash,
+                    },
+                    new_text,
+                )),
                 Some(end_str) => {
                     let end = parse_line_ref(end_str)?;
                     if start.line == end.line {
-                        Ok((ParsedRefs::Single { line: start.line, hash: start.hash }, new_text))
+                        Ok((
+                            ParsedRefs::Single {
+                                line: start.line,
+                                hash: start.hash,
+                            },
+                            new_text,
+                        ))
                     } else {
                         Ok((
                             ParsedRefs::Range {
@@ -120,11 +153,17 @@ fn parse_hashline_edit(edit: &HashlineEdit) -> Result<(ParsedRefs, String), Stri
                 .clone()
                 .or_else(|| insert_after.content.clone())
                 .unwrap_or_default();
-            Ok((ParsedRefs::InsertAfter { line: r.line, hash: r.hash }, text))
+            Ok((
+                ParsedRefs::InsertAfter {
+                    line: r.line,
+                    hash: r.hash,
+                },
+                text,
+            ))
         }
-        HashlineEdit::Replace { .. } => {
-            Err("replace edits are applied separately; do not pass them to applyHashlineEdits".into())
-        }
+        HashlineEdit::Replace { .. } => Err(
+            "replace edits are applied separately; do not pass them to applyHashlineEdits".into(),
+        ),
     }
 }
 
@@ -169,13 +208,21 @@ pub fn apply_hashline_edits(
         let mut touched = HashSet::new();
         for (_, p) in parsed {
             match &p.spec {
-                ParsedRefs::Single { line, .. } => { touched.insert(*line); }
-                ParsedRefs::Range { start_line, end_line, .. } => {
+                ParsedRefs::Single { line, .. } => {
+                    touched.insert(*line);
+                }
+                ParsedRefs::Range {
+                    start_line,
+                    end_line,
+                    ..
+                } => {
                     for ln in *start_line..=*end_line {
                         touched.insert(ln);
                     }
                 }
-                ParsedRefs::InsertAfter { line, .. } => { touched.insert(*line); }
+                ParsedRefs::InsertAfter { line, .. } => {
+                    touched.insert(*line);
+                }
             }
         }
         touched
@@ -203,7 +250,12 @@ pub fn apply_hashline_edits(
     // Pre-validate all hashes
     let mut mismatches: Vec<HashMismatch> = Vec::new();
 
-    let validate_or_relocate = |line: &mut usize, hash: &str, file_lines: &[String], unique_line_by_hash: &HashMap<String, usize>, mismatches: &mut Vec<HashMismatch>| -> bool {
+    let validate_or_relocate = |line: &mut usize,
+                                hash: &str,
+                                file_lines: &[String],
+                                unique_line_by_hash: &HashMap<String, usize>,
+                                mismatches: &mut Vec<HashMismatch>|
+     -> bool {
         if *line < 1 || *line > file_lines.len() {
             return false; // will be caught as out-of-range error
         }
@@ -232,9 +284,16 @@ pub fn apply_hashline_edits(
                         "Line {} does not exist (file has {} lines)",
                         line,
                         file_lines.len()
-                    ).into());
+                    )
+                    .into());
                 }
-                validate_or_relocate(line, hash, &file_lines, &unique_line_by_hash, &mut mismatches);
+                validate_or_relocate(
+                    line,
+                    hash,
+                    &file_lines,
+                    &unique_line_by_hash,
+                    &mut mismatches,
+                );
             }
             ParsedRefs::InsertAfter { line, hash } => {
                 if *line < 1 || *line > file_lines.len() {
@@ -242,45 +301,73 @@ pub fn apply_hashline_edits(
                         "Line {} does not exist (file has {} lines)",
                         line,
                         file_lines.len()
-                    ).into());
+                    )
+                    .into());
                 }
                 if p.dst_lines.is_empty() {
                     return Err("Insert-after edit requires non-empty dst".into());
                 }
-                validate_or_relocate(line, hash, &file_lines, &unique_line_by_hash, &mut mismatches);
+                validate_or_relocate(
+                    line,
+                    hash,
+                    &file_lines,
+                    &unique_line_by_hash,
+                    &mut mismatches,
+                );
             }
-            ParsedRefs::Range { start_line, start_hash, end_line, end_hash } => {
+            ParsedRefs::Range {
+                start_line,
+                start_hash,
+                end_line,
+                end_hash,
+            } => {
                 if *start_line < 1 || *start_line > file_lines.len() {
                     return Err(format!(
                         "Line {} does not exist (file has {} lines)",
                         start_line,
                         file_lines.len()
-                    ).into());
+                    )
+                    .into());
                 }
                 if *end_line < 1 || *end_line > file_lines.len() {
                     return Err(format!(
                         "Line {} does not exist (file has {} lines)",
                         end_line,
                         file_lines.len()
-                    ).into());
+                    )
+                    .into());
                 }
                 if *start_line > *end_line {
                     return Err(format!(
                         "Range start line {} must be <= end line {}",
                         start_line, end_line
-                    ).into());
+                    )
+                    .into());
                 }
 
                 let original_start = *start_line;
                 let original_end = *end_line;
                 let original_count = original_end - original_start + 1;
 
-                let start_ok = validate_or_relocate(start_line, start_hash, &file_lines, &unique_line_by_hash, &mut mismatches);
-                let end_ok = validate_or_relocate(end_line, end_hash, &file_lines, &unique_line_by_hash, &mut mismatches);
+                let start_ok = validate_or_relocate(
+                    start_line,
+                    start_hash,
+                    &file_lines,
+                    &unique_line_by_hash,
+                    &mut mismatches,
+                );
+                let end_ok = validate_or_relocate(
+                    end_line,
+                    end_hash,
+                    &file_lines,
+                    &unique_line_by_hash,
+                    &mut mismatches,
+                );
 
                 if start_ok && end_ok {
                     let relocated_count = *end_line - *start_line + 1;
-                    let changed_by_relocation = *start_line != original_start || *end_line != original_end;
+                    let changed_by_relocation =
+                        *start_line != original_start || *end_line != original_end;
                     let invalid_range = *start_line > *end_line;
                     let scope_changed = relocated_count != original_count;
 
@@ -291,7 +378,10 @@ pub fn apply_hashline_edits(
                         mismatches.push(HashMismatch {
                             line: original_start,
                             expected: start_hash.clone(),
-                            actual: compute_line_hash(original_start, &file_lines[original_start - 1]),
+                            actual: compute_line_hash(
+                                original_start,
+                                &file_lines[original_start - 1],
+                            ),
                         });
                         mismatches.push(HashMismatch {
                             line: original_end,
@@ -305,10 +395,7 @@ pub fn apply_hashline_edits(
     }
 
     if !mismatches.is_empty() {
-        return Err(Box::new(HashlineMismatchError::new(
-            mismatches,
-            file_lines,
-        )));
+        return Err(Box::new(HashlineMismatchError::new(mismatches, file_lines)));
     }
 
     // Recompute touched lines after relocation
@@ -320,14 +407,18 @@ pub fn apply_hashline_edits(
     for (i, (_, p)) in parsed.iter().enumerate() {
         let line_key = match &p.spec {
             ParsedRefs::Single { line, .. } => format!("s:{}", line),
-            ParsedRefs::Range { start_line, end_line, .. } => format!("r:{}:{}", start_line, end_line),
+            ParsedRefs::Range {
+                start_line,
+                end_line,
+                ..
+            } => format!("r:{}:{}", start_line, end_line),
             ParsedRefs::InsertAfter { line, .. } => format!("i:{}", line),
         };
         let dst_key = format!("{}|{}", line_key, p.dst_lines.join("\n"));
-        if seen_edit_keys.contains_key(&dst_key) {
-            dedup_indices.insert(i);
+        if let std::collections::hash_map::Entry::Vacant(e) = seen_edit_keys.entry(dst_key) {
+            e.insert(i);
         } else {
-            seen_edit_keys.insert(dst_key, i);
+            dedup_indices.insert(i);
         }
     }
     if !dedup_indices.is_empty() {
@@ -360,7 +451,8 @@ pub fn apply_hashline_edits(
             ParsedRefs::InsertAfter { .. } => 1,
             _ => 0,
         };
-        sort_line_b.cmp(&sort_line_a)
+        sort_line_b
+            .cmp(&sort_line_a)
             .then(prec_a.cmp(&prec_b))
             .then(a.0.cmp(&b.0))
     });
@@ -379,13 +471,16 @@ pub fn apply_hashline_edits(
                         &explicitly_touched_lines,
                     )
                 {
-                    let orig_lines: Vec<String> = original_file_lines[start - 1..start - 1 + delete_count].to_vec();
+                    let orig_lines: Vec<String> =
+                        original_file_lines[start - 1..start - 1 + delete_count].to_vec();
                     let mut next_lines = heuristics::restore_indent_for_paired_replacement(
                         &[orig_lines.first().cloned().unwrap_or_default()],
                         &new_lines,
                     );
                     if orig_lines.join("\n") == next_lines.join("\n")
-                        && orig_lines.iter().any(|l| heuristics::has_confusable_hyphens(l))
+                        && orig_lines
+                            .iter()
+                            .any(|l| heuristics::has_confusable_hyphens(l))
                     {
                         next_lines = heuristics::normalize_confusable_hyphens_in_lines(&next_lines);
                     }
@@ -404,12 +499,18 @@ pub fn apply_hashline_edits(
 
                 let orig_lines: Vec<String> = original_file_lines[line - 1..line].to_vec();
                 let stripped = heuristics::strip_range_boundary_echo(
-                    &original_file_lines, line, line, &edit.dst_lines,
+                    &original_file_lines,
+                    line,
+                    line,
+                    &edit.dst_lines,
                 );
                 let stripped = heuristics::restore_old_wrapped_lines(&orig_lines, &stripped);
-                let mut new_lines = heuristics::restore_indent_for_paired_replacement(&orig_lines, &stripped);
+                let mut new_lines =
+                    heuristics::restore_indent_for_paired_replacement(&orig_lines, &stripped);
                 if orig_lines.join("\n") == new_lines.join("\n")
-                    && orig_lines.iter().any(|l| heuristics::has_confusable_hyphens(l))
+                    && orig_lines
+                        .iter()
+                        .any(|l| heuristics::has_confusable_hyphens(l))
                 {
                     new_lines = heuristics::normalize_confusable_hyphens_in_lines(&new_lines);
                 }
@@ -424,18 +525,30 @@ pub fn apply_hashline_edits(
                 file_lines.splice(line - 1..line, new_lines);
                 track_first_changed(&mut first_changed_line, line);
             }
-            ParsedRefs::Range { start_line, start_hash, end_line, .. } => {
+            ParsedRefs::Range {
+                start_line,
+                start_hash,
+                end_line,
+                ..
+            } => {
                 let start = *start_line;
                 let end = *end_line;
                 let count = end - start + 1;
-                let orig_lines: Vec<String> = original_file_lines[start - 1..start - 1 + count].to_vec();
+                let orig_lines: Vec<String> =
+                    original_file_lines[start - 1..start - 1 + count].to_vec();
                 let stripped = heuristics::strip_range_boundary_echo(
-                    &original_file_lines, start, end, &edit.dst_lines,
+                    &original_file_lines,
+                    start,
+                    end,
+                    &edit.dst_lines,
                 );
                 let stripped = heuristics::restore_old_wrapped_lines(&orig_lines, &stripped);
-                let mut new_lines = heuristics::restore_indent_for_paired_replacement(&orig_lines, &stripped);
+                let mut new_lines =
+                    heuristics::restore_indent_for_paired_replacement(&orig_lines, &stripped);
                 if orig_lines.join("\n") == new_lines.join("\n")
-                    && orig_lines.iter().any(|l| heuristics::has_confusable_hyphens(l))
+                    && orig_lines
+                        .iter()
+                        .any(|l| heuristics::has_confusable_hyphens(l))
                 {
                     new_lines = heuristics::normalize_confusable_hyphens_in_lines(&new_lines);
                 }
@@ -453,7 +566,8 @@ pub fn apply_hashline_edits(
             ParsedRefs::InsertAfter { line, hash } => {
                 let line = *line;
                 let anchor_line = &original_file_lines[line - 1];
-                let inserted = heuristics::strip_insert_anchor_echo_after(anchor_line, &edit.dst_lines);
+                let inserted =
+                    heuristics::strip_insert_anchor_echo_after(anchor_line, &edit.dst_lines);
                 if inserted.is_empty() {
                     noop_edits.push(NoopEdit {
                         edit_index: *idx,
@@ -470,7 +584,8 @@ pub fn apply_hashline_edits(
 
     // Warnings
     let mut warnings = Vec::new();
-    let mut diff_line_count = (file_lines.len() as isize - original_file_lines.len() as isize).unsigned_abs();
+    let mut diff_line_count =
+        (file_lines.len() as isize - original_file_lines.len() as isize).unsigned_abs();
     for i in 0..std::cmp::min(file_lines.len(), original_file_lines.len()) {
         if file_lines[i] != original_file_lines[i] {
             diff_line_count += 1;
