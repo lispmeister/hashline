@@ -21,18 +21,24 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "$OS" in
-  Linux)  OS_TAG="linux" ;;
-  Darwin) OS_TAG="darwin" ;;
+  Linux)
+    case "$ARCH" in
+      x86_64|amd64)  TARGET="x86_64-unknown-linux-gnu" ;;
+      aarch64|arm64) TARGET="aarch64-unknown-linux-gnu" ;;
+      *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
+    esac
+    ;;
+  Darwin)
+    case "$ARCH" in
+      x86_64|amd64)  TARGET="x86_64-apple-darwin" ;;
+      aarch64|arm64) TARGET="aarch64-apple-darwin" ;;
+      *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
+    esac
+    ;;
   *) echo "Unsupported OS: $OS" >&2; exit 1 ;;
 esac
 
-case "$ARCH" in
-  x86_64|amd64)  ARCH_TAG="x86_64" ;;
-  aarch64|arm64) ARCH_TAG="aarch64" ;;
-  *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
-esac
-
-ASSET="${BINARY}-${OS_TAG}-${ARCH_TAG}.tar.gz"
+ASSET="${BINARY}-${TARGET}.tar.gz"
 
 # Resolve version
 if [ "$VERSION" = "latest" ]; then
@@ -45,8 +51,20 @@ fi
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-echo "Downloading ${BINARY} (${OS_TAG}/${ARCH_TAG})..."
+echo "Downloading ${BINARY} (${TARGET})..."
 curl -fsSL "$DOWNLOAD_URL" -o "${TMPDIR}/${ASSET}"
+
+echo "Verifying checksum..."
+curl -fsSL "${DOWNLOAD_URL}.sha256" -o "${TMPDIR}/${ASSET}.sha256"
+cd "$TMPDIR"
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum -c "${ASSET}.sha256"
+elif command -v shasum >/dev/null 2>&1; then
+  shasum -a 256 -c "${ASSET}.sha256"
+else
+  echo "Warning: no sha256sum or shasum found, skipping checksum verification"
+fi
+cd - >/dev/null
 
 echo "Extracting..."
 tar -xzf "${TMPDIR}/${ASSET}" -C "$TMPDIR"
