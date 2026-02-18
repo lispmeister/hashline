@@ -84,6 +84,18 @@ Output:
 5:0e|}
 ```
 
+Read a specific range (useful for verifying edits without re-reading the whole file):
+
+```sh
+hashline read --start-line 3 --lines 2 src/main.rs
+```
+
+Output:
+```
+3:7f|fn main() {
+4:01|    println!("hello");
+```
+
 ### Apply edits
 
 Pipe JSON edits to stdin:

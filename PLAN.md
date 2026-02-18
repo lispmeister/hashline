@@ -105,6 +105,12 @@ A standalone binary that can be invoked by Claude Code (or any tool harness).
 - Read file, output hashline-formatted content to stdout
 - Options: `--start-line N`, `--lines N` (range), `--chunk-lines N`, `--chunk-bytes N`
 
+#### Task 2.5: Implement `--start-line` and `--lines` for `hashline read`
+- The `--start-line N` and `--lines N` options from Task 2.1 were never implemented
+- After editing a large file, agents need to verify just the changed region without re-reading the entire file
+- Without this, agents must fall back to the built-in Read tool for partial reads, breaking the hashline workflow
+- Accept `hashline read --start-line 130 --lines 25 <file>` to output only that range with correct LINE:HASH anchors
+
 #### Task 2.2: `hashline apply <file>`
 - Read edit operations from stdin (JSON)
 - Apply to file, write result back
@@ -168,6 +174,6 @@ For all code edits, use the hashline CLI instead of the built-in Edit tool:
 
 2. **`replace` operation**: The TS code explicitly excludes the substring `replace` variant from `applyHashlineEdits` (it's handled separately). Should the Rust CLI support it, or keep it as a separate concern?
 
-3. **Streaming**: The TS implementation has elaborate streaming support for large files. How important is this for the initial Rust version? Could start with a simpler all-in-memory approach and add streaming later.
+3. **Streaming**: Punted. Current implementation is fully in-memory. Not a priority — files that models edit are rarely large enough to matter, and stdout is already line-buffered. If needed later, add `--chunk-lines N` / `--chunk-bytes N` to `hashline read` and a streaming `format_hashlines` variant that writes to `impl Write` instead of returning a `String`.
 
 5. **Heuristic fidelity**: The TS implementation has ~6 different heuristic recovery mechanisms (merge detection, indent restoration, wrap restoration, etc.). These are valuable but complex. Should we port all of them in Phase 1, or start with a minimal set (hash prefix stripping, indent restoration) and add more based on real-world failure modes?

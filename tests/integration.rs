@@ -1,4 +1,9 @@
 use hashline::*;
+use std::process::Command;
+
+fn hashline_bin() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_hashline"))
+}
 
 fn make_ref(line_num: usize, content: &str) -> String {
     format!("{}:{}", line_num, compute_line_hash(line_num, content))
@@ -740,4 +745,108 @@ fn json_deserialize_params() {
     let params: hashline::HashlineParams = serde_json::from_str(json).unwrap();
     assert_eq!(params.path, "/tmp/test.rs");
     assert_eq!(params.edits.len(), 1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLI — argument validation
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn cli_rejects_start_line_zero() {
+    let output = hashline_bin()
+        .args(["read", "--start-line", "0", "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("invalid value '0'"), "stderr: {}", stderr);
+}
+
+#[test]
+fn cli_rejects_negative_start_line() {
+    let output = hashline_bin()
+        .args(["read", "--start-line", "-1", "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
+fn cli_rejects_lines_zero() {
+    let output = hashline_bin()
+        .args(["read", "--lines", "0", "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("invalid value '0'"), "stderr: {}", stderr);
+}
+
+#[test]
+fn cli_rejects_negative_lines() {
+    let output = hashline_bin()
+        .args(["read", "--lines", "-1", "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
+fn cli_start_line_and_lines_work_together() {
+    let output = hashline_bin()
+        .args(["read", "--start-line", "2", "--lines", "2", "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.trim().split('\n').collect();
+    assert_eq!(lines.len(), 2);
+    assert!(lines[0].starts_with("2:"));
+    assert!(lines[1].starts_with("3:"));
+}
+
+#[test]
+fn cli_start_line_beyond_file_produces_no_output() {
+    let output = hashline_bin()
+        .args(["read", "--start-line", "99999", "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+}
+
+#[test]
+fn cli_rejects_start_line_above_u32_max() {
+    let above = (u32::MAX as u64 + 1).to_string();
+    let output = hashline_bin()
+        .args(["read", "--start-line", &above, "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("invalid value"), "stderr: {}", stderr);
+}
+
+#[test]
+fn cli_rejects_lines_above_u32_max() {
+    let above = (u32::MAX as u64 + 1).to_string();
+    let output = hashline_bin()
+        .args(["read", "--lines", &above, "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("invalid value"), "stderr: {}", stderr);
+}
+
+#[test]
+fn cli_accepts_u32_max_start_line() {
+    let max = u32::MAX.to_string();
+    let output = hashline_bin()
+        .args(["read", "--start-line", &max, "src/cli.rs"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    // File is much smaller, so no output — but the value is accepted
+    assert!(output.stdout.is_empty());
 }

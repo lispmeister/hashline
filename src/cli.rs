@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, builder::RangedU64ValueParser};
 
 #[derive(Parser)]
 #[command(
@@ -18,8 +18,11 @@ pub enum Commands {
         /// File path to read
         file: String,
         /// Starting line number (1-indexed, default 1)
-        #[arg(long, default_value_t = 1)]
+        #[arg(long, default_value_t = 1, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
         start_line: usize,
+        /// Maximum number of lines to output
+        #[arg(long, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
+        lines: Option<usize>,
     },
     /// Apply hashline edits from stdin JSON to a file
     Apply,

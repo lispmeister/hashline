@@ -16,7 +16,7 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Read { file, start_line } => {
+        Commands::Read { file, start_line, lines } => {
             let content = match std::fs::read_to_string(&file) {
                 Ok(c) => c,
                 Err(e) => {
@@ -32,7 +32,18 @@ fn main() {
             } else {
                 &content
             };
-            println!("{}", format::format_hashlines(content, start_line));
+            let all_lines: Vec<&str> = content.split('\n').collect();
+            let start_idx = start_line.saturating_sub(1).min(all_lines.len());
+            let end_idx = if let Some(n) = lines {
+                (start_idx + n).min(all_lines.len())
+            } else {
+                all_lines.len()
+            };
+            let slice = &all_lines[start_idx..end_idx];
+            if !slice.is_empty() {
+                let sliced_content = slice.join("\n");
+                println!("{}", format::format_hashlines(&sliced_content, start_line));
+            }
         }
         Commands::Apply => {
             let mut input = String::new();

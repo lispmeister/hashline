@@ -3,6 +3,7 @@
 For all code edits, use the hashline CLI via Bash instead of the built-in Edit tool:
 
 - **Read**: `hashline read <file>` — returns LINE:HASH|content format
+- **Partial read**: `hashline read --start-line N --lines M <file>` — read M lines starting at line N
 - **Edit**: `echo '{"path":"<file>","edits":[...]}' | hashline apply`
 - After every edit, re-read before editing the same file again (hashes changed)
 - On hash mismatch errors (exit code 1), copy the updated LINE:HASH refs from stderr and retry
