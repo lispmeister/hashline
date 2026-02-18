@@ -10,6 +10,21 @@ For all code edits, use the hashline CLI via Bash instead of the built-in Edit t
 - Each edit call validates all anchors against the original file state before mutating
 - Edits are applied atomically — if any anchor fails validation, no changes are made
 
+## Keeping the binary current
+
+After any changes to `src/`, reinstall before using `hashline` commands:
+
+```sh
+cargo install --path .
+```
+
+Verify the installed version matches `Cargo.toml` before starting a session that edits source:
+
+```sh
+hashline --version
+grep '^version' Cargo.toml
+```
+
 ## Edit operations
 
 **`set_line`** — replace one line:
