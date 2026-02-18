@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-02-18
+
+### Added
+
+- Per-subcommand man pages (`hashline-read.1`, `hashline-apply.1`, `hashline-hash.1`) bundled in release tarballs
+- Man pages include AGENT WORKFLOW, EDIT OPERATIONS reference, and per-subcommand EXAMPLES
+- Homebrew install now includes all man pages
+- README: Homebrew upgrade instructions
+
+### Fixed
+
+- `cargo install --path .` reminder added to CLAUDE.md to prevent stale binary issues
+
 ## [0.1.2] - 2026-02-18
 
 ### Added
