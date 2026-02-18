@@ -6,11 +6,15 @@ hashline \- Line\-addressable file editing with content hashes
 .SH SYNOPSIS
 \fBhashline\fR [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
 .SH DESCRIPTION
-Line\-addressable file editing with content hashes
+Hashline tags each line of a file with a short content hash (LINE:HASH), allowing AI coding agents to reference lines by anchor rather than reproducing exact text. Hash mismatches after file changes are detected before any edit is applied, preventing silent corruption.
+.PP
+Hash algorithm: xxHash32(whitespace_stripped_line, seed=0) % 256, formatted as 2 hex chars.
+.PP
+Exit codes: 0 = success, 1 = hash mismatch (stderr has updated anchors), 2 = other error.
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
 \fB\-V\fR, \fB\-\-version\fR
 Print version
@@ -27,5 +31,32 @@ Output line hashes for a file
 .TP
 hashline\-help(1)
 Print this message or the help of the given subcommand(s)
+.SH EXTRA
+AGENT WORKFLOW
+Add the contents of HASHLINE_TEMPLATE.md to your project\*(Aqs CLAUDE.md,
+AGENTS.md, or equivalent agent instructions file. The full workflow:
+
+1. hashline read src/foo.rs
+Output: LINE:HASH|content for each line. Collect anchors for lines to change.
+
+2. cat << \*(AqEOF\*(Aq | hashline apply
+{"path":"src/foo.rs","edits":[{"set_line":{"anchor":"4:01","new_text":"..."}}]}
+EOF
+Edits are atomic — all validate before any mutation. On hash mismatch
+(exit 1), stderr shows updated LINE:HASH refs; retry with those anchors.
+
+3. hashline read \-\-start\-line 3 \-\-lines 5 src/foo.rs
+Verify just the changed region without re\-reading the whole file.
+
+EDIT OPERATIONS
+set_line      Replace one line:    {"set_line":{"anchor":"4:01","new_text":"..."}}
+replace_lines Replace a range:     {"replace_lines":{"start_anchor":"3:7f","end_anchor":"5:0e","new_text":"..."}}
+insert_after  Insert after anchor: {"insert_after":{"anchor":"2:b2","text":"..."}}
+replace       Exact substring:     {"replace":{"old_text":"...","new_text":"..."}}
+
+Use "new_text":"" in replace_lines to delete a range.
+Use \\n in strings for multi\-line content.
+Batch multiple edits to one file in a single apply call.
+replace edits run after all anchor edits and error on ambiguous matches.
 .SH VERSION
 v0.1.2

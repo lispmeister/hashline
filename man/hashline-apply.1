@@ -6,8 +6,43 @@ apply \- Apply hashline edits from stdin JSON to a file
 .SH SYNOPSIS
 \fBapply\fR [\fB\-h\fR|\fB\-\-help\fR] 
 .SH DESCRIPTION
-Apply hashline edits from stdin JSON to a file
+Read a JSON edit specification from stdin and apply it to the target file.
+.PP
+All anchors are validated against the current file state before any changes are made (atomic apply). If any anchor hash does not match, no edits are applied and the correct updated LINE:HASH refs are printed to stderr.
+.PP
+Input format:
+{"path": "<file>", "edits": [<edit>, ...]}
+.PP
+Supported edit operations: set_line, replace_lines, insert_after, replace.
+See hashline(1) for the full edit operation reference.
+.PP
+Exit codes:
+0  All edits applied successfully
+1  Hash mismatch — stderr contains updated LINE:HASH anchors, retry with those
+2  Other error (bad JSON, file not found, ambiguous replace match, etc.)
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.SH EXTRA
+EXAMPLES
+Replace one line (use heredoc to avoid shell escaping issues):
+cat << \*(AqEOF\*(Aq | hashline apply
+{"path":"src/main.rs","edits":[{"set_line":{"anchor":"4:01","new_text":"    println!(\\"goodbye\\");"}}]}
+EOF
+
+Multiple edits in one call:
+cat << \*(AqEOF\*(Aq | hashline apply
+{
+"path": "src/main.rs",
+"edits": [
+{"set_line":    {"anchor": "4:01", "new_text": "    println!(\\"goodbye\\");"}},
+{"insert_after": {"anchor": "5:0e", "text": "// end"}}
+]
+}
+EOF
+
+Delete a range of lines:
+cat << \*(AqEOF\*(Aq | hashline apply
+{"path":"src/main.rs","edits":[{"replace_lines":{"start_anchor":"3:7f","end_anchor":"5:0e","new_text":""}}]}
+EOF

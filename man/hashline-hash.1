@@ -6,11 +6,14 @@ hash \- Output line hashes for a file
 .SH SYNOPSIS
 \fBhash\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIFILE\fR> 
 .SH DESCRIPTION
-Output line hashes for a file
+Output the LINE:HASH prefix for each line without the content. Useful for debugging hash mismatches or inspecting how hashline identifies lines.
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
 <\fIFILE\fR>
 File path to hash
+.SH EXTRA
+EXAMPLES
+hashline hash src/main.rs

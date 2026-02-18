@@ -6,7 +6,13 @@ read \- Read a file and output hashline\-formatted content
 .SH SYNOPSIS
 \fBread\fR [\fB\-\-start\-line\fR] [\fB\-\-lines\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIFILE\fR> 
 .SH DESCRIPTION
-Read a file and output hashline\-formatted content
+Read a file and output each line prefixed with its LINE:HASH anchor.
+.PP
+Each line of output has the form:
+.PP
+LINENUM:HASH|CONTENT
+.PP
+where HASH is a 2\-char hex string derived from xxHash32 of the whitespace\-stripped line content. Use \-\-start\-line and \-\-lines to read a specific range — useful for verifying edits without re\-reading an entire large file.
 .SH OPTIONS
 .TP
 \fB\-\-start\-line\fR \fI<START_LINE>\fR [default: 1]
@@ -16,7 +22,17 @@ Starting line number (1\-indexed, default 1)
 Maximum number of lines to output
 .TP
 \fB\-h\fR, \fB\-\-help\fR
-Print help
+Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
 <\fIFILE\fR>
 File path to read
+.SH EXTRA
+EXAMPLES
+Read the whole file:
+hashline read src/main.rs
+
+Read lines 50\-74:
+hashline read \-\-start\-line 50 \-\-lines 25 src/main.rs
+
+Read from line 100 to end of file:
+hashline read \-\-start\-line 100 src/main.rs
