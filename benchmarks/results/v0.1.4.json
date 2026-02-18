@@ -1,142 +1,142 @@
 {
   "version": "0.1.4",
-  "commit": "2f46bc2",
-  "timestamp": "2026-02-18T07:21:37Z",
+  "commit": "68c1185",
+  "timestamp": "2026-02-18T07:24:21Z",
   "runner": "ubuntu-latest",
   "results": [
     {
       "benchmark": "format_hashlines",
       "file_lines": 100,
       "metric": "us_per_iter",
-      "value": 35.9
+      "value": 36.1
     },
     {
       "benchmark": "format_hashlines",
       "file_lines": 1000,
       "metric": "us_per_iter",
-      "value": 396.9
+      "value": 405.1
     },
     {
       "benchmark": "format_hashlines",
       "file_lines": 10000,
       "metric": "us_per_iter",
-      "value": 3849.9
+      "value": 3863.9
     },
     {
       "benchmark": "compute_line_hash",
       "file_lines": 100,
       "metric": "us_per_iter",
-      "value": 26.1
+      "value": 26.0
     },
     {
       "benchmark": "compute_line_hash",
       "file_lines": 1000,
       "metric": "us_per_iter",
-      "value": 209.7
+      "value": 212.7
     },
     {
       "benchmark": "compute_line_hash",
       "file_lines": 10000,
       "metric": "us_per_iter",
-      "value": 2189.4
+      "value": 2165.4
     },
     {
       "benchmark": "parse_line_ref",
       "file_lines": 0,
       "edit_count": 40000,
       "metric": "us_per_iter",
-      "value": 11586.4
+      "value": 11457.4
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 100,
       "edit_count": 1,
       "metric": "us_per_iter",
-      "value": 48.7
+      "value": 48.8
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 100,
       "edit_count": 5,
       "metric": "us_per_iter",
-      "value": 58.2
+      "value": 57.8
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 100,
       "edit_count": 20,
       "metric": "us_per_iter",
-      "value": 100.0
+      "value": 99.6
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 1000,
       "edit_count": 1,
       "metric": "us_per_iter",
-      "value": 444.4
+      "value": 447.2
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 1000,
       "edit_count": 5,
       "metric": "us_per_iter",
-      "value": 454.0
+      "value": 453.5
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 1000,
       "edit_count": 20,
       "metric": "us_per_iter",
-      "value": 500.0
+      "value": 494.2
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 10000,
       "edit_count": 1,
       "metric": "us_per_iter",
-      "value": 3664.9
+      "value": 3714.9
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 10000,
       "edit_count": 5,
       "metric": "us_per_iter",
-      "value": 3674.0
+      "value": 3738.2
     },
     {
       "benchmark": "apply_hashline_edits",
       "file_lines": 10000,
       "edit_count": 20,
       "metric": "us_per_iter",
-      "value": 3709.5
+      "value": 3744.5
     },
     {
       "benchmark": "apply_batched",
       "file_lines": 1000,
       "edit_count": 1,
       "metric": "us_per_iter",
-      "value": 439.7
+      "value": 446.2
     },
     {
       "benchmark": "apply_batched",
       "file_lines": 1000,
       "edit_count": 10,
       "metric": "us_per_iter",
-      "value": 466.1
+      "value": 471.9
     },
     {
       "benchmark": "apply_batched",
       "file_lines": 1000,
       "edit_count": 50,
       "metric": "us_per_iter",
-      "value": 571.3
+      "value": 581.0
     },
     {
       "benchmark": "apply_batched",
       "file_lines": 1000,
       "edit_count": 100,
       "metric": "us_per_iter",
-      "value": 691.2
+      "value": 695.2
     }
   ]
 }
