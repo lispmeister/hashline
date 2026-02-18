@@ -123,6 +123,13 @@ echo '{"path":"src/main.rs","edits":[
 {"insert_after": {"anchor": "2:b2", "text": "use std::fs;"}}
 ```
 
+**`replace`** — exact substring replacement (no anchor needed, runs after anchor edits):
+```json
+{"replace": {"old_text": "old string", "new_text": "new string"}}
+```
+
+Errors if the text is not found or matches more than one location (add more context to disambiguate).
+
 ### Error handling
 
 On hash mismatch (file changed since last read), exit code 1 and stderr shows updated refs:
@@ -158,7 +165,7 @@ The template covers the full workflow: reading files, applying edits with heredo
 ## Testing
 
 ```sh
-# Run all tests (unit + integration + comparison fixtures)
+# Run all tests (unit + integration + fuzz + comparison fixtures) — 145 tests total
 cargo test
 
 # Run only the LLM comparison fixtures (hashline vs raw search-replace)
