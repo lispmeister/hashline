@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.1.5] - 2026-02-18
+
+### Fixed
+
+- Benchmark CI threshold raised from 15% to 25% to tolerate shared runner variance
+- `compute_line_hash` benchmark iterations increased 50 → 200 to reduce measurement noise
+
 ## [0.1.4] - 2026-02-18
 
 ### Added
