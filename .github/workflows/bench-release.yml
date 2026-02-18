@@ -1,0 +1,66 @@
+name: Benchmark Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to record results for (e.g. v0.1.3)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build bench binary (release)
+        run: cargo build --release --bin bench
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run benchmarks
+        run: |
+          mkdir -p benchmarks/results
+          BENCH_RUNNER=ubuntu-latest \
+          cargo run --release --bin bench -- --json \
+            > benchmarks/results/${{ steps.tag.outputs.tag }}.json
+
+      - name: Update baseline
+        run: cp benchmarks/results/${{ steps.tag.outputs.tag }}.json benchmarks/baseline.json
+
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add benchmarks/results/ benchmarks/baseline.json
+          git diff --cached --quiet && echo "No changes to commit" || \
+            git commit -m "bench: record results for ${{ steps.tag.outputs.tag }}"
+          git push origin HEAD:main

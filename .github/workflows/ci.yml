@@ -35,3 +35,36 @@ jobs:
 
       - name: Format check
         run: cargo fmt -- --check
+
+  bench:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build bench binary (release)
+        run: cargo build --release --bin bench
+
+      - name: Run benchmarks
+        run: |
+          BENCH_RUNNER=ubuntu-latest \
+          cargo run --release --bin bench -- --json > /tmp/current.json
+
+      - name: Compare against baseline
+        run: |
+          python benchmarks/compare.py \
+            benchmarks/baseline.json \
+            /tmp/current.json \
+            --threshold 15
