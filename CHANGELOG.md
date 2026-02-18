@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-02-18
+
+### Added
+
+- `hashline read --lines N` flag to limit output to N lines (partial reads)
+- `replace` edit operation: exact substring replacement, runs after anchor edits
+  - Errors on ambiguous match (multiple occurrences) and not-found
+  - `apply_replace_edits()` is now a public library function
+- Property-based fuzz tests via `proptest` (12 tests covering hash, parse, format, apply)
+- Hash compatibility test suite verifying byte-for-byte output parity with `Bun.hash.xxHash32`
+- 3 additional heuristic integration tests (hashline prefix stripping, diff-plus stripping, indent restoration)
+
+### Fixed
+
+- `--start-line` was only changing line number labels, not actually selecting lines from the file
+
+### Changed
+
+- `--start-line` and `--lines` now reject values of 0 or above `u32::MAX` (4,294,967,295)
+
 ## [0.1.1] - 2026-02-17
 
 ### Added
@@ -32,5 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-platform release binaries (macOS, Linux, Windows) via GitHub Actions
 - Install script with SHA256 checksum verification
 
+[0.1.2]: https://github.com/lispmeister/hashline/releases/tag/v0.1.2
 [0.1.1]: https://github.com/lispmeister/hashline/releases/tag/v0.1.1
 [0.1.0]: https://github.com/lispmeister/hashline/releases/tag/v0.1.0

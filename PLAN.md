@@ -160,9 +160,12 @@ For all code edits, use the hashline CLI instead of the built-in Edit tool:
 - All parse/validate tests
 - All edit application tests including heuristic edge cases
 
-#### Task 4.2: Fuzz testing
-- Fuzz the edit application engine with random file contents and edit operations
-- Fuzz the line reference parser
+#### Task 4.2: Fuzz testing — DONE
+- Property-based fuzzing via `proptest` in `tests/fuzz.rs` (12 tests, runs on stable Rust)
+- Covers: `compute_line_hash` (no panics, 2-hex-char invariant, whitespace invariant, index ignored)
+- Covers: `parse_line_ref` (no panics, valid refs always round-trip)
+- Covers: `format_hashlines` (no panics, line count, sequential numbering, hash verification)
+- Covers: `apply_hashline_edits` (no panics on bad anchors, correct anchors always succeed, empty edits are no-op)
 
 #### Task 4.3: Benchmark against the TypeScript implementation
 - Ensure hash outputs are identical for the same inputs
@@ -170,9 +173,9 @@ For all code edits, use the hashline CLI instead of the built-in Edit tool:
 
 ## Open Questions
 
-1. **Hash compatibility**: The TS implementation uses `Bun.hash.xxHash32`. We need to verify the exact xxHash32 variant/seed to ensure Rust produces identical hashes. Bun uses seed=0 by default.
+1. **Hash compatibility**: Resolved. Bun uses `xxHash32(normalized, seed=0) % 256`. Our Rust implementation (`xxhash_rust::xxh32::xxh32`) with seed 0 produces identical output. Verified via 10 test vectors in `tests/integration.rs::hash_compat_bun_vectors`.
 
-2. **`replace` operation**: The TS code explicitly excludes the substring `replace` variant from `applyHashlineEdits` (it's handled separately). Should the Rust CLI support it, or keep it as a separate concern?
+2. **`replace` operation**: Resolved. Implemented exact substring `replace` via `apply_replace_edits()`. Runs in a separate pass after anchor edits, matching the TS architecture. Errors on ambiguity (multiple matches) and not-found. Fuzzy matching (Levenshtein) is explicitly out of scope — hashline's anchor system makes it unnecessary.
 
 3. **Streaming**: Punted. Current implementation is fully in-memory. Not a priority — files that models edit are rarely large enough to matter, and stdout is already line-buffered. If needed later, add `--chunk-lines N` / `--chunk-bytes N` to `hashline read` and a streaming `format_hashlines` variant that writes to `impl Write` instead of returning a `String`.
 

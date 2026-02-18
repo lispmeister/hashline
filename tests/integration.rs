@@ -1,4 +1,4 @@
-use hashline::*;
+use hashline::{apply_replace_edits, *};
 use std::process::Command;
 
 fn hashline_bin() -> Command {
@@ -7,6 +7,37 @@ fn hashline_bin() -> Command {
 
 fn make_ref(line_num: usize, content: &str) -> String {
     format!("{}:{}", line_num, compute_line_hash(line_num, content))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Hash compatibility — vectors generated from Bun.hash.xxHash32(normalized, 0) % 256
+// Verifies our Rust implementation is byte-for-byte compatible with the TS reference.
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn hash_compat_bun_vectors() {
+    // Generated via: Bun.hash.xxHash32(line.replace(/\s/g, ""), 0) % 256
+    let vectors: &[(&str, &str)] = &[
+        ("", "05"),
+        ("hello", "f9"),
+        ("world", "b3"),
+        ("function hello() {", "42"),
+        ("  return 42;", "90"),
+        ("}", "18"),
+        ("    const x = 1;", "7d"),
+        ("use std::io;", "a4"),
+        // whitespace normalization: these two must produce the same hash
+        ("  hello  world  ", "02"),
+        ("helloworld", "02"),
+    ];
+    for (line, expected) in vectors {
+        let got = compute_line_hash(1, line);
+        assert_eq!(
+            &got, expected,
+            "hash mismatch for {:?}: got {} expected {}",
+            line, got, expected
+        );
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -503,6 +534,51 @@ fn heuristic_normalize_confusable_hyphens_on_noop() {
     );
 }
 
+#[test]
+fn heuristic_strips_hashline_prefixes_from_new_text() {
+    // Model echoes hashline-formatted lines as the replacement content
+    let content = "aaa\nbbb\nccc";
+    let hash_bbb = compute_line_hash(2, "bbb");
+    let new_text = format!("2:{}|BBB", hash_bbb);
+    let edits = vec![HashlineEdit::SetLine {
+        set_line: hashline::edit::SetLineOp {
+            anchor: make_ref(2, "bbb"),
+            new_text,
+        },
+    }];
+    let result = apply_hashline_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "aaa\nBBB\nccc");
+}
+
+#[test]
+fn heuristic_strips_diff_plus_prefix_from_new_text() {
+    // Model outputs unified-diff style lines as replacement
+    let content = "aaa\nbbb\nccc";
+    let edits = vec![HashlineEdit::SetLine {
+        set_line: hashline::edit::SetLineOp {
+            anchor: make_ref(2, "bbb"),
+            new_text: "+BBB".into(),
+        },
+    }];
+    let result = apply_hashline_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "aaa\nBBB\nccc");
+}
+
+#[test]
+fn heuristic_restores_indent_for_paired_replacement() {
+    // Same line count, model drops leading indent on one line
+    let content = "    foo();\n    bar();\n    baz();";
+    let edits = vec![HashlineEdit::ReplaceLines {
+        replace_lines: hashline::edit::ReplaceLinesOp {
+            start_anchor: make_ref(1, "    foo();"),
+            end_anchor: Some(make_ref(2, "    bar();")),
+            new_text: Some("foo();\nbar();".into()), // indent stripped by model
+        },
+    }];
+    let result = apply_hashline_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "    foo();\n    bar();\n    baz();");
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // applyHashlineEdits — multiple edits
 // ═══════════════════════════════════════════════════════════════════════════
@@ -719,6 +795,125 @@ fn error_reject_replace_edit() {
     assert!(err
         .to_string()
         .contains("replace edits are applied separately"));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// apply_replace_edits
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn replace_basic_substitution() {
+    let content = "hello world\ngoodbye world";
+    let edits = vec![HashlineEdit::Replace {
+        replace: hashline::edit::ReplaceOp {
+            old_text: "hello world".into(),
+            new_text: "hi world".into(),
+        },
+    }];
+    let result = apply_replace_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "hi world\ngoodbye world");
+    assert_eq!(result.replacements, 1);
+}
+
+#[test]
+fn replace_multiline_old_text() {
+    let content = "fn foo() {\n    let x = 1;\n}\n";
+    let edits = vec![HashlineEdit::Replace {
+        replace: hashline::edit::ReplaceOp {
+            old_text: "let x = 1;".into(),
+            new_text: "let x = 42;".into(),
+        },
+    }];
+    let result = apply_replace_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "fn foo() {\n    let x = 42;\n}\n");
+}
+
+#[test]
+fn replace_errors_on_not_found() {
+    let content = "aaa\nbbb\nccc";
+    let edits = vec![HashlineEdit::Replace {
+        replace: hashline::edit::ReplaceOp {
+            old_text: "zzz".into(),
+            new_text: "ZZZ".into(),
+        },
+    }];
+    let err = apply_replace_edits(content, &edits).unwrap_err();
+    assert!(err.to_string().contains("not found"), "err: {}", err);
+}
+
+#[test]
+fn replace_errors_on_ambiguous_match() {
+    let content = "foo\nfoo\nbar";
+    let edits = vec![HashlineEdit::Replace {
+        replace: hashline::edit::ReplaceOp {
+            old_text: "foo".into(),
+            new_text: "FOO".into(),
+        },
+    }];
+    let err = apply_replace_edits(content, &edits).unwrap_err();
+    assert!(err.to_string().contains("matches 2"), "err: {}", err);
+}
+
+#[test]
+fn replace_errors_on_empty_old_text() {
+    let content = "aaa";
+    let edits = vec![HashlineEdit::Replace {
+        replace: hashline::edit::ReplaceOp {
+            old_text: "".into(),
+            new_text: "x".into(),
+        },
+    }];
+    assert!(apply_replace_edits(content, &edits).is_err());
+}
+
+#[test]
+fn replace_skips_anchor_edits() {
+    // apply_replace_edits should silently ignore non-replace edits
+    let content = "aaa\nbbb";
+    let edits = vec![HashlineEdit::SetLine {
+        set_line: hashline::edit::SetLineOp {
+            anchor: make_ref(1, "aaa"),
+            new_text: "AAA".into(),
+        },
+    }];
+    let result = apply_replace_edits(content, &edits).unwrap();
+    assert_eq!(result.content, content); // unchanged
+    assert_eq!(result.replacements, 0);
+}
+
+#[test]
+fn replace_multiple_ops_sequential() {
+    let content = "alpha beta gamma";
+    let edits = vec![
+        HashlineEdit::Replace {
+            replace: hashline::edit::ReplaceOp {
+                old_text: "alpha".into(),
+                new_text: "ALPHA".into(),
+            },
+        },
+        HashlineEdit::Replace {
+            replace: hashline::edit::ReplaceOp {
+                old_text: "gamma".into(),
+                new_text: "GAMMA".into(),
+            },
+        },
+    ];
+    let result = apply_replace_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "ALPHA beta GAMMA");
+    assert_eq!(result.replacements, 2);
+}
+
+#[test]
+fn replace_json_roundtrip() {
+    let json = r#"{"replace":{"old_text":"foo","new_text":"bar"}}"#;
+    let edit: HashlineEdit = serde_json::from_str(json).unwrap();
+    match &edit {
+        HashlineEdit::Replace { replace } => {
+            assert_eq!(replace.old_text, "foo");
+            assert_eq!(replace.new_text, "bar");
+        }
+        _ => panic!("expected Replace"),
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

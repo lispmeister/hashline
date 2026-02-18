@@ -612,3 +612,57 @@ fn track_first_changed(first: &mut Option<usize>, line: usize) {
         *first = Some(line);
     }
 }
+
+/// Result of applying replace edits.
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct ReplaceResult {
+    pub content: String,
+    pub replacements: usize,
+}
+
+/// Apply `replace` edits (exact substring replacement) to file content.
+///
+/// Runs after anchor-based edits. Each op searches for `old_text` and
+/// replaces with `new_text`. Errors on ambiguity (multiple matches) when
+/// `all` is false. Returns an error if `old_text` is not found.
+pub fn apply_replace_edits(
+    content: &str,
+    edits: &[HashlineEdit],
+) -> Result<ReplaceResult, Box<dyn std::error::Error>> {
+    let mut current = content.to_string();
+    let mut total_replacements = 0;
+
+    for edit in edits {
+        let op = match edit {
+            HashlineEdit::Replace { replace } => replace,
+            _ => continue,
+        };
+
+        if op.old_text.is_empty() {
+            return Err("replace edit: old_text must not be empty".into());
+        }
+
+        let count = current.matches(op.old_text.as_str()).count();
+        if count == 0 {
+            return Err(
+                format!("replace edit: old_text not found in file:\n{}", op.old_text).into(),
+            );
+        }
+        if count > 1 {
+            return Err(format!(
+                "replace edit: old_text matches {} locations — add more context to make it unique:\n{}",
+                count, op.old_text
+            )
+            .into());
+        }
+
+        current = current.replacen(op.old_text.as_str(), op.new_text.as_str(), 1);
+        total_replacements += 1;
+    }
+
+    Ok(ReplaceResult {
+        content: current,
+        replacements: total_replacements,
+    })
+}

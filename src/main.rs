@@ -16,7 +16,11 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Read { file, start_line, lines } => {
+        Commands::Read {
+            file,
+            start_line,
+            lines,
+        } => {
             let content = match std::fs::read_to_string(&file) {
                 Ok(c) => c,
                 Err(e) => {
@@ -75,26 +79,22 @@ fn main() {
                 content
             };
 
-            match edit::apply_hashline_edits(&content, &params.edits) {
-                Ok(result) => {
-                    // Write back with trailing newline
-                    let mut output = result.content;
-                    output.push('\n');
-                    if let Err(e) = std::fs::write(&params.path, &output) {
-                        eprintln!("Error writing {}: {}", params.path, e);
-                        process::exit(2);
-                    }
-                    if !result.warnings.is_empty() {
-                        for w in &result.warnings {
-                            eprintln!("Warning: {}", w);
-                        }
-                    }
-                    if let Some(line) = result.first_changed_line {
-                        println!("Applied successfully. First changed line: {}", line);
-                    } else {
-                        println!("No changes applied.");
-                    }
-                }
+            // Anchor edits run first, then replace edits on the result
+            let anchor_edits: Vec<_> = params
+                .edits
+                .iter()
+                .filter(|e| !matches!(e, edit::HashlineEdit::Replace { .. }))
+                .cloned()
+                .collect();
+            let replace_edits: Vec<_> = params
+                .edits
+                .iter()
+                .filter(|e| matches!(e, edit::HashlineEdit::Replace { .. }))
+                .cloned()
+                .collect();
+
+            let anchor_result = match edit::apply_hashline_edits(&content, &anchor_edits) {
+                Ok(r) => r,
                 Err(e) => {
                     if e.downcast_ref::<error::HashlineMismatchError>().is_some() {
                         eprintln!("{}", e);
@@ -104,6 +104,37 @@ fn main() {
                         process::exit(2);
                     }
                 }
+            };
+
+            let final_content = if replace_edits.is_empty() {
+                anchor_result.content
+            } else {
+                match edit::apply_replace_edits(&anchor_result.content, &replace_edits) {
+                    Ok(r) => r.content,
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        process::exit(2);
+                    }
+                }
+            };
+
+            let mut output = final_content;
+            output.push('\n');
+            if let Err(e) = std::fs::write(&params.path, &output) {
+                eprintln!("Error writing {}: {}", params.path, e);
+                process::exit(2);
+            }
+            if !anchor_result.warnings.is_empty() {
+                for w in &anchor_result.warnings {
+                    eprintln!("Warning: {}", w);
+                }
+            }
+            if let Some(line) = anchor_result.first_changed_line {
+                println!("Applied successfully. First changed line: {}", line);
+            } else if !replace_edits.is_empty() {
+                println!("Applied successfully.");
+            } else {
+                println!("No changes applied.");
             }
         }
         Commands::Hash { file } => {

@@ -1,0 +1,22 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH hashline-read 1  "read " 
+.SH NAME
+read \- Read a file and output hashline\-formatted content
+.SH SYNOPSIS
+\fBread\fR [\fB\-\-start\-line\fR] [\fB\-\-lines\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIFILE\fR> 
+.SH DESCRIPTION
+Read a file and output hashline\-formatted content
+.SH OPTIONS
+.TP
+\fB\-\-start\-line\fR \fI<START_LINE>\fR [default: 1]
+Starting line number (1\-indexed, default 1)
+.TP
+\fB\-\-lines\fR \fI<LINES>\fR
+Maximum number of lines to output
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIFILE\fR>
+File path to read
