@@ -49,7 +49,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           cp target/${{ matrix.target }}/release/hashline hashline
-          tar czf ${{ matrix.name }}.tar.gz hashline man/hashline.1
+          tar czf ${{ matrix.name }}.tar.gz hashline man/hashline*.1
           rm hashline
           shasum -a 256 ${{ matrix.name }}.tar.gz > ${{ matrix.name }}.tar.gz.sha256
 
