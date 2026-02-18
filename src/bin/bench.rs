@@ -132,7 +132,7 @@ fn run_benchmarks() -> Vec<BenchResult> {
     for &size in &sizes {
         let content = generate_file(size);
         let lines: Vec<&str> = content.split('\n').collect();
-        let us = bench("compute_line_hash", 50, || {
+        let us = bench("compute_line_hash", 200, || {
             for (i, line) in lines.iter().enumerate() {
                 let _ = compute_line_hash(i + 1, line);
             }

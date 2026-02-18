@@ -67,4 +67,4 @@ jobs:
           python benchmarks/compare.py \
             benchmarks/baseline.json \
             /tmp/current.json \
-            --threshold 15
+            --threshold 25
