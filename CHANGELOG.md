@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+
+## [0.1.4] - 2026-02-18
+
+### Added
+
+- Performance regression test rig: `bench --json` flag, `benchmarks/compare.py`, per-release result files, and `bench-release.yml` workflow
+- `BENCHMARKS.md`: Rust vs Bun throughput comparison, hash parity table, 100-edit scenario
+- Rust toolchain pinned to 1.93.0 via `rust-toolchain.toml`
+
+### Fixed
+
+- Clippy `manual_is_multiple_of` lint in bench binary
+- Added `clippy` and `rustfmt` components to `rust-toolchain.toml` for CI compatibility
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.3] - 2026-02-18
