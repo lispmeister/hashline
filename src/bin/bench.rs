@@ -165,4 +165,44 @@ fn main() {
             println!("| {:>8} | {:>6} | {:>12.1} |", size, num_edits, us);
         }
     }
+
+    // --- 100 edits on mid-size file ---
+    println!("\n## 100 sequential set_line edits (1 000-line file)\n");
+    println!(
+        "| {:>12} | {:>12} | {:>16} |",
+        "Scenario", "Total (ms)", "Per edit (us)"
+    );
+    println!("|{:-<14}|{:-<14}|{:-<18}|", "", "", "");
+
+    let mid_content = generate_file(1_000);
+    let mid_lines: Vec<&str> = mid_content.split('\n').collect();
+
+    for &num_edits in &[1usize, 10, 50, 100] {
+        let edits: Vec<HashlineEdit> = (0..num_edits)
+            .map(|i| {
+                let line_idx = (i * 1_000 / num_edits).min(999);
+                let line_num = line_idx + 1;
+                let hash = compute_line_hash(line_num, mid_lines[line_idx]);
+                HashlineEdit::SetLine {
+                    set_line: SetLineOp {
+                        anchor: format!("{}:{}", line_num, hash),
+                        new_text: format!("    let var_{} = REPLACED;", line_idx),
+                    },
+                }
+            })
+            .collect();
+
+        let iters = if num_edits >= 50 { 20 } else { 50 };
+        let us = bench("100_edits", iters, || {
+            let _ = apply_hashline_edits(&mid_content, &edits);
+        });
+        let total_ms = us / 1_000.0;
+        let per_edit_us = us / num_edits as f64;
+        println!(
+            "| {:>12} | {:>12.3} | {:>16.1} |",
+            format!("{} edits", num_edits),
+            total_ms,
+            per_edit_us,
+        );
+    }
 }
