@@ -6,21 +6,22 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![Changelog](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-orange)](CHANGELOG.md)
 
-A content-addressable line editing tool for AI coding assistants. Instead of requiring models to reproduce exact text for edits, Hashline tags each line with a short hash anchor — models reference lines by `LINE:HASH` instead of matching verbatim content.
+**AI coding agents fail at edits, not at reasoning.** Hashline fixes the interface.
 
-Based on the [Hashline concept by Can Bölük](https://blog.can.ac/2026/02/12/the-harness-problem/), which identifies the "harness problem" — the interface between model output and workspace edits is where most practical failures occur, not in the model's reasoning.
+Instead of asking models to reproduce exact text or generate fragile diffs, Hashline tags each line with a short content hash. Models reference lines by `LINE:HASH` anchor — if the file changes, the hash changes, and stale edits are rejected before any corruption occurs.
 
-## Why
+Based on the [Hashline concept by Can Bölük](https://blog.can.ac/2026/02/12/the-harness-problem/).
 
-Current edit approaches fail in predictable ways:
+## Results
 
-| Approach | Failure mode |
-|----------|-------------|
-| **Patch/diff** (Codex) | Strict formatting rules; 50%+ failure rate for some models |
-| **String replacement** (Claude Code) | Requires character-perfect reproduction including whitespace |
-| **Neural merge** (Cursor) | Requires fine-tuning separate 70B models |
+| Model | Without Hashline | With Hashline |
+|-------|-----------------|---------------|
+| Grok Code Fast | 6.7% | 68.3% (**10x**) |
+| All models | baseline | ~20% fewer output tokens |
 
-Hashline sidesteps all of these. Each line gets a 2-character hex hash derived from its content:
+The improvement is largest for weaker models — Hashline makes cheap models viable for real editing tasks.
+
+## How It Works
 
 ```
 1:a3|function hello() {
@@ -28,17 +29,13 @@ Hashline sidesteps all of these. Each line gets a 2-character hex hash derived f
 3:0e|}
 ```
 
-Models edit by referencing anchors (`2:f1`) rather than reproducing text. Benchmarks from the original article show:
+Each line gets a `LINE:HASH` prefix. To edit line 2, the model uses anchor `2:f1` — not the text itself. If the file has changed since the model last read it, the hash won't match and the edit is rejected with the correct updated anchors. No silent corruption.
 
-- **10x improvement** for weaker models (Grok Code Fast: 6.7% → 68.3%)
-- **~20% fewer output tokens** across all models
-- **Staleness detection** — hash mismatches catch edits to changed files before corruption
+**Heuristics handle real-world model output:** Hashline automatically strips accidentally echoed prefixes, restores dropped indentation, detects when a model merges adjacent lines, undoes formatting rewraps, and normalizes confusable Unicode characters. The model doesn't need to be perfect — Hashline recovers from common mistakes.
 
 ## Install
 
 ### From release binary
-
-Detects your platform, downloads the binary, and verifies the SHA256 checksum:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh
@@ -51,15 +48,10 @@ Options:
 curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --prefix /usr/local/bin
 
 # Specific version
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --version v0.1.0
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --version v0.1.2
 ```
 
-Pre-built binaries are available for:
-- macOS (Apple Silicon, Intel)
-- Linux (x86_64, ARM64)
-- Windows (x86_64)
-
-Or download directly from [Releases](https://github.com/lispmeister/hashline/releases).
+Pre-built binaries for macOS (Apple Silicon, Intel), Linux (x86_64, ARM64), and Windows (x86_64). Or download from [Releases](https://github.com/lispmeister/hashline/releases).
 
 ### From source
 
@@ -69,41 +61,25 @@ cargo install --path .
 
 ## Usage
 
-### Read a file with hashline annotations
+### The full loop
 
-```sh
+```bash
+# 1. Read — get LINE:HASH anchors
 hashline read src/main.rs
-```
 
-Output:
-```
-1:4a|use std::io;
-2:b2|
-3:7f|fn main() {
-4:01|    println!("hello");
-5:0e|}
-```
+# 2. Edit — reference anchors, batch changes, atomic apply
+cat << 'EOF' | hashline apply
+{
+  "path": "src/main.rs",
+  "edits": [
+    {"set_line": {"anchor": "4:01", "new_text": "    println!(\"goodbye\");"}},
+    {"insert_after": {"anchor": "5:0e", "text": "// end of main"}}
+  ]
+}
+EOF
 
-Read a specific range (useful for verifying edits without re-reading the whole file):
-
-```sh
-hashline read --start-line 3 --lines 2 src/main.rs
-```
-
-Output:
-```
-3:7f|fn main() {
-4:01|    println!("hello");
-```
-
-### Apply edits
-
-Pipe JSON edits to stdin:
-
-```sh
-echo '{"path":"src/main.rs","edits":[
-  {"set_line":{"anchor":"4:01","new_text":"    println!(\"goodbye\");"}}
-]}' | hashline apply
+# 3. Verify — re-read just the changed region
+hashline read --start-line 4 --lines 3 src/main.rs
 ```
 
 ### Edit operations
@@ -113,7 +89,7 @@ echo '{"path":"src/main.rs","edits":[
 {"set_line": {"anchor": "4:01", "new_text": "    println!(\"goodbye\");"}}
 ```
 
-**`replace_lines`** — replace a range (or delete with `"new_text": ""`):
+**`replace_lines`** — replace a range (use `"new_text": ""` to delete):
 ```json
 {"replace_lines": {"start_anchor": "3:7f", "end_anchor": "5:0e", "new_text": "fn main() {}"}}
 ```
@@ -123,16 +99,16 @@ echo '{"path":"src/main.rs","edits":[
 {"insert_after": {"anchor": "2:b2", "text": "use std::fs;"}}
 ```
 
-**`replace`** — exact substring replacement (no anchor needed, runs after anchor edits):
+**`replace`** — exact substring replacement, no anchor needed:
 ```json
 {"replace": {"old_text": "old string", "new_text": "new string"}}
 ```
 
-Errors if the text is not found or matches more than one location (add more context to disambiguate).
+Errors if the text is not found or matches more than one location. Runs after all anchor edits.
 
 ### Error handling
 
-On hash mismatch (file changed since last read), exit code 1 and stderr shows updated refs:
+On hash mismatch (exit code 1), stderr shows the current file state with `>>>` marking changed lines:
 
 ```
 1 line has changed since last read. Use the updated LINE:HASH references shown below (>>> marks changed lines).
@@ -142,7 +118,17 @@ On hash mismatch (file changed since last read), exit code 1 and stderr shows up
     5:0e|}
 ```
 
-Retry with the updated anchor (`4:c9` instead of `4:01`).
+Copy the updated anchor (`4:c9`) and retry. No need to re-read the whole file.
+
+**Exit codes:** 0 = success, 1 = hash mismatch (retry with updated anchors), 2 = other error.
+
+### Partial reads
+
+After editing a large file, verify just the changed region:
+
+```sh
+hashline read --start-line 130 --lines 25 src/main.rs
+```
 
 ### Hash a file (debugging)
 
@@ -152,15 +138,25 @@ hashline hash src/main.rs
 
 ## Agent Integration
 
-Hashline works with any AI coding agent that accepts system-prompt instructions (Claude Code, Cursor, Windsurf, etc.).
+Hashline works with any AI coding agent that accepts system-prompt instructions: Claude Code, Cursor, Windsurf, and others.
 
-To enable hashline in your project:
+**Setup (two steps):**
 
-1. Install the `hashline` binary (see [Install](#install) above)
-2. Open [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) and copy the section below the `---` line
-3. Paste it into your project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent instructions file
+1. Install the `hashline` binary
+2. Copy the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) into your project's `CLAUDE.md`, `AGENTS.md`, or equivalent
 
-The template covers the full workflow: reading files, applying edits with heredoc syntax, batching multiple edits, and recovering from hash mismatches.
+The template covers the full workflow: reading files, applying edits with heredoc syntax, batching multiple edits, recovering from hash mismatches, and when to use `replace` vs anchor ops.
+
+## Why Not Diffs or String Replacement?
+
+| Approach | Failure mode |
+|----------|-------------|
+| **Patch/diff** | Strict formatting rules; 50%+ failure rate for weaker models |
+| **String replacement** | Requires character-perfect reproduction including whitespace |
+| **Neural merge** | Requires fine-tuning a separate 70B model |
+| **Hashline** | Model references anchors; heuristics recover from output artifacts |
+
+The key insight from Can Bölük's original research: models don't fail because they can't reason about code — they fail because the *edit harness* is too brittle. Hashline makes the harness robust.
 
 ## Testing
 
@@ -169,19 +165,13 @@ The template covers the full workflow: reading files, applying edits with heredo
 cargo test
 
 # Run only the LLM comparison fixtures (hashline vs raw search-replace)
-cargo test --test comparison
-
-# Run comparison fixtures with the summary table printed
 cargo test --test comparison -- --nocapture
-
-# Run a single fixture by name
-cargo test --test comparison fixture_04_indentation_sensitive
 
 # Run performance benchmarks (100 / 1K / 10K line files)
 cargo run --release --bin bench
 ```
 
-The comparison test suite loads 10 fixture scenarios from `tests/fixtures/` and applies each edit two ways: via hashline anchors and via naive string replacement. It prints a pass/fail summary table showing where hashline succeeds and raw mode fails (ambiguity, indentation, etc.).
+The comparison suite applies each of 10 fixture scenarios two ways — hashline anchors vs naive string replacement — and prints a pass/fail table showing where hashline succeeds and raw mode fails.
 
 ## License
 

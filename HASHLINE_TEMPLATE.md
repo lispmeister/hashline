@@ -1,6 +1,6 @@
 # Hashline Template
 
-Copy the section below into your project's CLAUDE.md or AGENTS.md.
+Copy the section below into your project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent instructions file.
 
 ---
 
@@ -10,14 +10,13 @@ Copy the section below into your project's CLAUDE.md or AGENTS.md.
 For all code edits, use the hashline CLI via Bash instead of the built-in Edit tool.
 For creating new files, use the Write tool. For deleting files, use `rm`.
 
-- `hashline read <file>` — returns `LINE:HASH|content` format
-- `cat << 'EOF' | hashline apply` — apply edits (use heredoc to avoid shell escaping issues)
-- After every edit, re-read before editing the same file again (hashes change)
-- Each apply call validates all anchors before mutating — if any fail, no changes are made
-
 ## Reading
 
-`hashline read src/main.rs` returns:
+```bash
+hashline read src/main.rs
+```
+
+Returns:
 ```
 1:a3|use std::io;
 2:05|
@@ -26,11 +25,16 @@ For creating new files, use the Write tool. For deleting files, use `rm`.
 5:0e|}
 ```
 
-The `3:7f` prefix is the anchor — line 3, hash `7f`. Use these anchors in edits.
+Each line has a `LINE:HASH` anchor. Use these anchors — not line numbers alone — in edits.
+
+**Partial read** (after editing, verify just the changed region):
+```bash
+hashline read --start-line 10 --lines 20 src/main.rs
+```
 
 ## Editing
 
-Always use a heredoc to pipe JSON. Batch multiple edits into one `edits` array:
+Always use a heredoc to pipe JSON. Batch all changes to a file into one `edits` array — edits are atomic (all succeed or none apply):
 
 ```bash
 cat << 'EOF' | hashline apply
@@ -46,17 +50,51 @@ EOF
 
 ### Operations
 
-- **`set_line`** — replace one line: `{"set_line": {"anchor": "4:01", "new_text": "new content"}}`
-- **`replace_lines`** — replace a range: `{"replace_lines": {"start_anchor": "3:7f", "end_anchor": "5:0e", "new_text": "fn main() {}"}}`
-- **`insert_after`** — add lines after anchor: `{"insert_after": {"anchor": "2:05", "text": "use std::fs;"}}`
+**`set_line`** — replace one line:
+```json
+{"set_line": {"anchor": "4:01", "new_text": "    println!(\"goodbye\");"}}
+```
 
-For `replace_lines`, use `"new_text": ""` to delete the range. Use `\n` in strings for multi-line content.
+**`replace_lines`** — replace a range (use `"new_text": ""` to delete):
+```json
+{"replace_lines": {"start_anchor": "3:7f", "end_anchor": "5:0e", "new_text": "fn main() {}"}}
+```
+
+**`insert_after`** — insert lines after an anchor:
+```json
+{"insert_after": {"anchor": "2:05", "text": "use std::fs;"}}
+```
+
+**`replace`** — exact substring replacement, no anchor needed (use when anchor ops are awkward, e.g. replacing a unique multi-line block). Runs after all anchor edits. Errors if text is not found or matches multiple locations:
+```json
+{"replace": {"old_text": "old string", "new_text": "new string"}}
+```
+
+Use `\n` in strings for multi-line content.
+
+## Exit Codes
+
+- **0** — success
+- **1** — hash mismatch (file changed since last read); stderr has updated anchors — copy them and retry
+- **2** — other error (bad JSON, file not found, etc.); do not retry without fixing the input
 
 ## Error Recovery
 
-On hash mismatch (exit code 1), stderr shows the current state:
+On hash mismatch, stderr shows the current file state with `>>>` marking changed lines:
+
 ```
-Hash mismatch at line 4: expected 01, got b7. Current content — 4:b7|    println!("world");
+1 line has changed since last read. Use the updated LINE:HASH references shown below (>>> marks changed lines).
+
+    3:7f|fn main() {
+>>> 4:c9|    println!("changed");
+    5:0e|}
 ```
 
-Copy the updated anchor (`4:b7`) into your edit and retry.
+Copy the updated anchor (`4:c9`) into your edit and retry. Do not re-read the whole file — just update the anchor.
+
+## Rules
+
+- Re-read a file before editing it again (hashes change after every apply)
+- Batch all edits to one file into a single apply call
+- Prefer anchor ops (`set_line`, `replace_lines`, `insert_after`) over `replace` — they are safer and more precise
+- Never guess a hash — always read first
