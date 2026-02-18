@@ -73,7 +73,7 @@ fn iso_timestamp() -> String {
         // Gregorian calendar from days since epoch
         let mut y = 1970u64;
         loop {
-            let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+            let leap = y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400));
             let ydays = if leap { 366 } else { 365 };
             if days < ydays {
                 break;
@@ -81,7 +81,7 @@ fn iso_timestamp() -> String {
             days -= ydays;
             y += 1;
         }
-        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+        let leap = y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400));
         let month_days = [
             31,
             if leap { 29 } else { 28 },
