@@ -124,6 +124,15 @@ A standalone binary that can be invoked by Claude Code (or any tool harness).
 - Define the edit operation JSON format matching the TypeScript types
 - Document the schema in the binary's help output
 
+#### Task 2.6: Homebrew formula
+- Create a Homebrew formula so users can install via `brew install hashline`
+- Options:
+  - **Tap** (recommended for now): create a `homebrew-hashline` tap repo under the same GitHub org, add formula that downloads the release tarball and verifies SHA256
+  - **Core** (longer term): submit to `homebrew-core` once the project has enough stars/usage
+- Formula should install the binary and the man pages (`man/hashline*.1`)
+- Update README install section with `brew install lispmeister/hashline/hashline`
+- CI should not be blocked on this — it's a distribution convenience, not a correctness requirement
+
 ### Phase 3: Integration with Claude Code
 
 A plain CLI tool invoked via Bash — no MCP server, no fork, no new tool registration needed.
