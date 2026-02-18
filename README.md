@@ -35,6 +35,12 @@ Each line gets a `LINE:HASH` prefix. To edit line 2, the model uses anchor `2:f1
 
 ## Install
 
+### Homebrew (macOS and Linux)
+
+```sh
+brew install lispmeister/hashline/hashline
+```
+
 ### From release binary
 
 ```sh
