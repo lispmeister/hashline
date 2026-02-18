@@ -67,7 +67,7 @@ A Rust crate implementing the hashline algorithm.
 
 #### Task 1.2: Hashline formatting
 - `format_hashlines(content: &str, start_line: usize) -> String`
-- Streaming variants for large files (chunk by line count and byte size)
+- Streaming variants: out of scope
 
 #### Task 1.3: Line reference parsing
 - `parse_line_ref(ref_str: &str) -> Result<LineRef>`
@@ -128,7 +128,7 @@ A standalone binary that can be invoked by Claude Code (or any tool harness).
 - Create a Homebrew formula so users can install via `brew install hashline`
 - Options:
   - **Tap** (recommended for now): create a `homebrew-hashline` tap repo under the same GitHub org, add formula that downloads the release tarball and verifies SHA256
-  - **Core** (longer term): submit to `homebrew-core` once the project has enough stars/usage
+  - **Core**: out of scope
 - Formula should install the binary and the man pages (`man/hashline*.1`)
 - Update README install section with `brew install lispmeister/hashline/hashline`
 - CI should not be blocked on this — it's a distribution convenience, not a correctness requirement
@@ -186,6 +186,6 @@ For all code edits, use the hashline CLI instead of the built-in Edit tool:
 
 2. **`replace` operation**: Resolved. Implemented exact substring `replace` via `apply_replace_edits()`. Runs in a separate pass after anchor edits, matching the TS architecture. Errors on ambiguity (multiple matches) and not-found. Fuzzy matching (Levenshtein) is explicitly out of scope — hashline's anchor system makes it unnecessary.
 
-3. **Streaming**: Punted. Current implementation is fully in-memory. Not a priority — files that models edit are rarely large enough to matter, and stdout is already line-buffered. If needed later, add `--chunk-lines N` / `--chunk-bytes N` to `hashline read` and a streaming `format_hashlines` variant that writes to `impl Write` instead of returning a `String`.
+3. **Streaming**: Out of scope. Removed from task list.
 
 5. **Heuristic fidelity**: The TS implementation has ~6 different heuristic recovery mechanisms (merge detection, indent restoration, wrap restoration, etc.). These are valuable but complex. Should we port all of them in Phase 1, or start with a minimal set (hash prefix stripping, indent restoration) and add more based on real-world failure modes?
