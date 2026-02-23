@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.1.6] - 2026-02-23
+
+### Changed
+
+- `HASHLINE_TEMPLATE.md`: placement guidance added (paste at top of CLAUDE.md/AGENTS.md before any other content); `insert_after` example anchors to a non-blank line; heredoc direction fixed (`hashline apply << 'EOF'`); Rules explicitly name `hashline read` and `hashline apply`
+- `README.md`: same heredoc fix in the usage example; step 2 of Agent Integration updated with top-of-file placement guidance
+- `CLAUDE.md`: synced with updated template; `## Keeping the binary current` moved to end of file so editing instructions appear first
+
 ## [0.1.5] - 2026-02-18
 
 ### Fixed

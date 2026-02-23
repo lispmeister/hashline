@@ -1,6 +1,6 @@
 # Hashline Template
 
-Copy the section below into your project's `CLAUDE.md`, `AGENTS.md`, or equivalent agent instructions file.
+Paste at the **top** of your project's `CLAUDE.md`, `AGENTS.md`, or equivalent — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over the agent's default edit tools.
 
 ---
 
@@ -34,10 +34,10 @@ hashline read --start-line 10 --lines 20 src/main.rs
 
 ## Editing
 
-Always use a heredoc to pipe JSON. Batch all changes to a file into one `edits` array — edits are atomic (all succeed or none apply):
+Always use a heredoc. Batch all changes to a file into one `edits` array — edits are atomic (all succeed or none apply):
 
 ```bash
-cat << 'EOF' | hashline apply
+hashline apply << 'EOF'
 {
   "path": "src/main.rs",
   "edits": [
@@ -62,7 +62,7 @@ EOF
 
 **`insert_after`** — insert lines after an anchor:
 ```json
-{"insert_after": {"anchor": "2:05", "text": "use std::fs;"}}
+{"insert_after": {"anchor": "1:a3", "text": "use std::fs;"}}
 ```
 
 **`replace`** — exact substring replacement, no anchor needed (use when anchor ops are awkward, e.g. replacing a unique multi-line block). Runs after all anchor edits. Errors if text is not found or matches multiple locations:
@@ -94,7 +94,7 @@ Copy the updated anchor (`4:c9`) into your edit and retry. Do not re-read the wh
 
 ## Rules
 
-- Re-read a file before editing it again (hashes change after every apply)
-- Batch all edits to one file into a single apply call
+- Re-read a file with `hashline read` before editing it again (hashes change after every apply)
+- Batch all edits to one file into a single `hashline apply` call
 - Prefer anchor ops (`set_line`, `replace_lines`, `insert_after`) over `replace` — they are safer and more precise
 - Never guess a hash — always read first

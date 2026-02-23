@@ -81,7 +81,7 @@ cargo install --path .
 hashline read src/main.rs
 
 # 2. Edit — reference anchors, batch changes, atomic apply
-cat << 'EOF' | hashline apply
+hashline apply << 'EOF'
 {
   "path": "src/main.rs",
   "edits": [
@@ -156,7 +156,7 @@ Hashline works with any AI coding agent that accepts system-prompt instructions:
 **Setup (two steps):**
 
 1. Install the `hashline` binary
-2. Copy the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) into your project's `CLAUDE.md`, `AGENTS.md`, or equivalent
+2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `CLAUDE.md`, `AGENTS.md`, or equivalent — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
 
 The template covers the full workflow: reading files, applying edits with heredoc syntax, batching multiple edits, recovering from hash mismatches, and when to use `replace` vs anchor ops.
 
