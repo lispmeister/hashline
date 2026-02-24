@@ -95,6 +95,20 @@ EOF
 hashline read --start-line 4 --lines 3 src/main.rs
 ```
 
+Alternatively, read edits from a file (avoids heredoc shell guard issues):
+
+```bash
+hashline apply --input edits.json
+```
+
+Use `--emit-updated` to get fresh anchors without a separate re-read:
+
+```bash
+hashline apply --emit-updated << 'EOF'
+...
+EOF
+```
+
 ### Edit operations
 
 **`set_line`** — replace one line:
@@ -107,7 +121,7 @@ hashline read --start-line 4 --lines 3 src/main.rs
 {"replace_lines": {"start_anchor": "3:7f", "end_anchor": "5:0e", "new_text": "fn main() {}"}}
 ```
 
-**`insert_after`** — add lines after an anchor:
+**`insert_after`** — add lines after an anchor (use `"text": ""` to insert a blank line):
 ```json
 {"insert_after": {"anchor": "2:b2", "text": "use std::fs;"}}
 ```
@@ -158,7 +172,7 @@ Hashline works with any AI coding agent that accepts system-prompt instructions:
 1. Install the `hashline` binary
 2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `CLAUDE.md`, `AGENTS.md`, or equivalent — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
 
-The template covers the full workflow: reading files, applying edits with heredoc syntax, batching multiple edits, recovering from hash mismatches, and when to use `replace` vs anchor ops.
+The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
 
 ## Why Not Diffs or String Replacement?
 

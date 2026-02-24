@@ -48,6 +48,19 @@ hashline apply << 'EOF'
 EOF
 ```
 
+Alternatively, write the JSON to a temp file and use `--input` (avoids heredoc shell guard issues with dangerous-looking content):
+
+```bash
+hashline apply --input /tmp/edits.json
+```
+
+Use `--emit-updated` to get fresh `LINE:HASH` anchors for the changed region without a separate re-read:
+
+```bash
+hashline apply --emit-updated << 'EOF'
+...
+EOF
+```
 
 ### Operations
 
