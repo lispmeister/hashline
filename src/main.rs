@@ -49,7 +49,10 @@ fn main() {
                 println!("{}", format::format_hashlines(&sliced_content, start_line));
             }
         }
-        Commands::Apply { input, emit_updated } => {
+        Commands::Apply {
+            input,
+            emit_updated,
+        } => {
             let input_data = if let Some(ref path) = input {
                 match std::fs::read_to_string(path) {
                     Ok(c) => c,
@@ -156,7 +159,9 @@ fn main() {
                     let context = 2;
                     let start = first_line.saturating_sub(1 + context);
                     let edits_count = params.edits.len();
-                    let end = all_lines.len().min(start + (edits_count * 3).max(10) + context * 2);
+                    let end = all_lines
+                        .len()
+                        .min(start + (edits_count * 3).max(10) + context * 2);
                     let slice = &all_lines[start..end];
                     if !slice.is_empty() {
                         let sliced_content = slice.join("\n");
