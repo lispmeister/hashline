@@ -66,7 +66,7 @@ verifying edits without re-reading an entire large file.",
         #[arg(long, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
         lines: Option<usize>,
     },
-    /// Apply hashline edits from stdin JSON to a file
+    /// Apply hashline edits to a file (reads JSON from stdin or --input file)
     #[command(
         long_about = "Read a JSON edit specification from stdin and apply it to the target file.\n\n\
 All anchors are validated against the current file state before any changes are made \
@@ -81,12 +81,14 @@ Exit codes:\n\
     1  Hash mismatch — stderr contains updated LINE:HASH anchors, retry with those\n\
     2  Other error (bad JSON, file not found, ambiguous replace match, etc.)",
         after_long_help = "EXAMPLES\n\
-    Replace one line (use heredoc to avoid shell escaping issues):\n\
-        cat << 'EOF' | hashline apply\n\
+    Read edits from a file (avoids heredoc shell guard issues):\n\
+        hashline apply --input edits.json\n\n\
+    Replace one line (heredoc):\n\
+        hashline apply << 'EOF'\n\
         {\"path\":\"src/main.rs\",\"edits\":[{\"set_line\":{\"anchor\":\"4:01\",\"new_text\":\"    println!(\\\"goodbye\\\");\"}}]}\n\
         EOF\n\n\
     Multiple edits in one call:\n\
-        cat << 'EOF' | hashline apply\n\
+        hashline apply << 'EOF'\n\
         {\n\
           \"path\": \"src/main.rs\",\n\
           \"edits\": [\n\
@@ -96,11 +98,18 @@ Exit codes:\n\
         }\n\
         EOF\n\n\
     Delete a range of lines:\n\
-        cat << 'EOF' | hashline apply\n\
+        hashline apply << 'EOF'\n\
         {\"path\":\"src/main.rs\",\"edits\":[{\"replace_lines\":{\"start_anchor\":\"3:7f\",\"end_anchor\":\"5:0e\",\"new_text\":\"\"}}]}\n\
         EOF"
     )]
-    Apply,
+    Apply {
+        /// Read JSON input from a file instead of stdin
+        #[arg(short, long, value_name = "FILE")]
+        input: Option<String>,
+        /// After successful apply, emit updated LINE:HASH anchors for changed region
+        #[arg(long)]
+        emit_updated: bool,
+    },
     /// Output line hashes for a file
     #[command(
         long_about = "Output the LINE:HASH prefix for each line without the content. \

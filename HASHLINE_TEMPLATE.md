@@ -34,7 +34,7 @@ hashline read --start-line 10 --lines 20 src/main.rs
 
 ## Editing
 
-Always use a heredoc. Batch all changes to a file into one `edits` array — edits are atomic (all succeed or none apply):
+Always use a heredoc. Batch all changes to a file into one `edits` array - edits are atomic (all succeed or none apply):
 
 ```bash
 hashline apply << 'EOF'
@@ -48,6 +48,7 @@ hashline apply << 'EOF'
 EOF
 ```
 
+
 ### Operations
 
 **`set_line`** — replace one line:
@@ -60,7 +61,7 @@ EOF
 {"replace_lines": {"start_anchor": "3:7f", "end_anchor": "5:0e", "new_text": "fn main() {}"}}
 ```
 
-**`insert_after`** — insert lines after an anchor:
+**`insert_after`** — insert lines after an anchor (use `"text": ""` to insert a blank line):
 ```json
 {"insert_after": {"anchor": "1:a3", "text": "use std::fs;"}}
 ```
@@ -94,7 +95,7 @@ Copy the updated anchor (`4:c9`) into your edit and retry. Do not re-read the wh
 
 ## Rules
 
-- Re-read a file with `hashline read` before editing it again (hashes change after every apply)
+- Re-read a file with `hashline read` before editing it again (hashes change after every apply), or use `--emit-updated` to get fresh anchors in the apply output
 - Batch all edits to one file into a single `hashline apply` call
 - Prefer anchor ops (`set_line`, `replace_lines`, `insert_after`) over `replace` — they are safer and more precise
 - Never guess a hash — always read first

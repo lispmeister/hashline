@@ -49,14 +49,25 @@ fn main() {
                 println!("{}", format::format_hashlines(&sliced_content, start_line));
             }
         }
-        Commands::Apply => {
-            let mut input = String::new();
-            if let Err(e) = std::io::stdin().read_to_string(&mut input) {
-                eprintln!("Error reading stdin: {}", e);
-                process::exit(2);
-            }
+        Commands::Apply { input, emit_updated } => {
+            let input_data = if let Some(ref path) = input {
+                match std::fs::read_to_string(path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("Error reading input file {}: {}", path, e);
+                        process::exit(2);
+                    }
+                }
+            } else {
+                let mut buf = String::new();
+                if let Err(e) = std::io::stdin().read_to_string(&mut buf) {
+                    eprintln!("Error reading stdin: {}", e);
+                    process::exit(2);
+                }
+                buf
+            };
 
-            let params: edit::HashlineParams = match serde_json::from_str(&input) {
+            let params: edit::HashlineParams = match serde_json::from_str(&input_data) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Invalid JSON input: {}", e);
@@ -129,8 +140,30 @@ fn main() {
                     eprintln!("Warning: {}", w);
                 }
             }
-            if let Some(line) = anchor_result.first_changed_line {
-                println!("Applied successfully. First changed line: {}", line);
+            if let Some(first_line) = anchor_result.first_changed_line {
+                println!("Applied successfully. First changed line: {}", first_line);
+                if emit_updated {
+                    // Re-read the written file and emit hashline-formatted output for the changed region
+                    let updated = std::fs::read_to_string(&params.path).unwrap_or_default();
+                    let updated = updated.replace("\r\n", "\n");
+                    let updated = if updated.ends_with('\n') {
+                        &updated[..updated.len() - 1]
+                    } else {
+                        &updated
+                    };
+                    let all_lines: Vec<&str> = updated.split('\n').collect();
+                    // Emit a window around the changed region
+                    let context = 2;
+                    let start = first_line.saturating_sub(1 + context);
+                    let edits_count = params.edits.len();
+                    let end = all_lines.len().min(start + (edits_count * 3).max(10) + context * 2);
+                    let slice = &all_lines[start..end];
+                    if !slice.is_empty() {
+                        let sliced_content = slice.join("\n");
+                        println!("---");
+                        println!("{}", format::format_hashlines(&sliced_content, start + 1));
+                    }
+                }
             } else if !replace_edits.is_empty() {
                 println!("Applied successfully.");
             } else {

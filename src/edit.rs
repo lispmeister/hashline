@@ -305,7 +305,8 @@ pub fn apply_hashline_edits(
                     .into());
                 }
                 if p.dst_lines.is_empty() {
-                    return Err("Insert-after edit requires non-empty dst".into());
+                    // Empty text means "insert a blank line"
+                    p.dst_lines = vec![String::new()];
                 }
                 validate_or_relocate(
                     line,

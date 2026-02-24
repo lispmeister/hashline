@@ -189,3 +189,83 @@ For all code edits, use the hashline CLI instead of the built-in Edit tool:
 3. **Streaming**: Out of scope. Removed from task list.
 
 5. **Heuristic fidelity**: The TS implementation has ~6 different heuristic recovery mechanisms (merge detection, indent restoration, wrap restoration, etc.). These are valuable but complex. Should we port all of them in Phase 1, or start with a minimal set (hash prefix stripping, indent restoration) and add more based on real-world failure modes?
+
+---
+
+## Field Usage Observations (2026-02-23)
+
+Heavy real-world use during OpenClaw containerization refactor. Multiple sessions, 7 parallel sub-agents, ~10 files edited across infrastructure and TypeScript source.
+
+### Operation Frequency
+
+| Operation | Count | Notes |
+|-----------|-------|-------|
+| `set_line` | ~25 | Most common. Reliable, no issues. |
+| `replace` | ~10 | Used when anchors are awkward (multi-line blocks, blank line insertion). Escape hatch. |
+| `insert_after` | ~8 | Works but has blank-line limitation (see below). |
+| `replace_lines` | ~5 | Works well for range replacements. |
+| `read --start-line --lines` | ~15 | Essential for large files. Saves significant context window. |
+| `hash` | 0 | Never needed in practice. |
+
+### Issues Encountered
+
+#### 1. `insert_after` rejects empty `text` (Medium)
+
+Cannot insert a blank line. `{"insert_after": {"anchor": "5:0e", "text": ""}}` returns an error. Workaround: use `replace` to embed `\n\n` in surrounding content. This is unintuitive and documented in CLAUDE.md as a recipe.
+
+**Suggested fix:** Either allow empty `text` (inserting a single blank line) or add a dedicated `insert_blank_after` operation.
+
+#### 2. Heredoc content triggers external shell guards (Medium — HIGH IMPACT)
+
+The `hashline apply << 'EOF'` heredoc pattern means the entire JSON payload is visible to shell-level security hooks. When the payload contained dangerous-looking strings as *documentation text* (e.g. describing a shell injection vulnerability), the `dcg` pre-execution hook blocked the command entirely. This happened twice in the same session — once writing PLAN.md review findings, and again writing *this very section* to PLAN.md. Both times required falling back to the built-in Edit tool.
+
+**This is the #1 blocker for general skill adoption.** Any project that discusses security, documents dangerous commands, or includes code examples with shell metacharacters will hit this.
+
+**Suggested fix options:**
+- A. Accept input from a file instead of stdin: `hashline apply --input edits.json`
+- B. Accept base64-encoded input: `hashline apply --base64 <encoded>`
+- C. Accept input from a named pipe or fd
+
+Option A is simplest and avoids all heredoc escaping issues. The workflow becomes:
+1. Claude writes the JSON to a temp file via the Write tool (which has no shell guard issues)
+2. Claude runs `hashline apply --input /tmp/edits.json`
+3. No heredoc, no shell guard scanning of content
+
+#### 3. Must re-read between every apply (Low)
+
+Forgetting to re-read after an apply causes hash mismatches. Happened twice. Recovery is smooth (stderr shows updated anchors), but it's an extra round-trip.
+
+**Suggested fix:** On successful apply, output the updated `LINE:HASH` anchors for the changed region to stdout. This way the agent has fresh anchors without a separate read call. Could be opt-in: `hashline apply --emit-updated`.
+
+#### 4. Permission pattern matching (Low, worked around)
+
+Claude Code's permission allowlist matches on the first token of a Bash command. The original CLAUDE.md pattern `cat << 'EOF' | hashline apply` matched on `cat`, requiring `"Bash(cat:*)"` in settings. Fixed by switching to `hashline apply << 'EOF'` which matches `"Bash(hashline:*)"`. This is now documented.
+
+### Sub-Agent Performance
+
+7 parallel sub-agents used hashline simultaneously on different files. All succeeded without intervention. The anchor-based system made it easy to give precise edit instructions in agent prompts ("change line 35:b2 to..."). Hash mismatches were handled autonomously by agents.
+
+### What Works Exceptionally Well
+
+1. **Atomic batch edits** — all-or-nothing per file prevents partial corruption
+2. **Deterministic anchors** — make edit instructions to sub-agents unambiguous
+3. **`replace` as escape hatch** — handles cases where anchor ops are clumsy
+4. **Partial reads** — `--start-line` + `--lines` save huge context on 500+ line files
+5. **Hash mismatch recovery** — stderr output with `>>>` markers is immediately actionable
+6. **Exit code convention** — 0/1/2 is clean and easy to branch on
+
+### Skill Readiness Assessment
+
+**Ready:**
+- CLAUDE.md instructions are mature and battle-tested across multiple sessions
+- All four operations documented with examples and edge cases
+- Error recovery (hash mismatch, exit codes) is well documented
+- Permission configuration (`"Bash(hashline:*)"` + heredoc pattern) is solved
+- Sub-agents can use it without extra guidance
+- Partial read support is documented and heavily used
+
+**Not ready — blockers:**
+- **Issue #2 is a hard blocker.** Any project discussing security will hit dcg false positives. Must implement `--input file` option before shipping as a skill.
+- Fix issue #1 (blank line insertion) — allow empty text or add operation
+- Consider issue #3 (`--emit-updated`) to reduce round-trips
+- Need usage data from at least one more project to validate generality

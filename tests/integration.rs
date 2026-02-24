@@ -362,7 +362,7 @@ fn edit_insert_after_last_line() {
 }
 
 #[test]
-fn edit_insert_empty_dst_throws() {
+fn edit_insert_empty_dst_inserts_blank_line() {
     let content = "aaa\nbbb";
     let edits = vec![HashlineEdit::InsertAfter {
         insert_after: hashline::edit::InsertAfterOp {
@@ -371,7 +371,8 @@ fn edit_insert_empty_dst_throws() {
             content: None,
         },
     }];
-    assert!(apply_hashline_edits(content, &edits).is_err());
+    let result = apply_hashline_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "aaa\n\nbbb");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -770,7 +771,7 @@ fn error_range_start_gt_end() {
 }
 
 #[test]
-fn error_insert_empty_dst() {
+fn insert_empty_dst_inserts_blank_line_error_section() {
     let content = "aaa\nbbb";
     let edits = vec![HashlineEdit::InsertAfter {
         insert_after: hashline::edit::InsertAfterOp {
@@ -779,7 +780,8 @@ fn error_insert_empty_dst() {
             content: None,
         },
     }];
-    assert!(apply_hashline_edits(content, &edits).is_err());
+    let result = apply_hashline_edits(content, &edits).unwrap();
+    assert_eq!(result.content, "aaa\n\nbbb");
 }
 
 #[test]
