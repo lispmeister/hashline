@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.1.7] - 2026-02-24
+
+### Added
+
+- `--input`/`-i` flag for `hashline apply`: read JSON from a file instead of stdin, avoiding heredoc shell guard false positives with dangerous-looking content
+- `--emit-updated` flag for `hashline apply`: output fresh `LINE:HASH` anchors for the changed region after a successful edit, reducing re-read round-trips
+- `insert_after` with empty `text` now inserts a blank line (was previously an error)
+
+### Changed
+
+- `CLAUDE.md` and `HASHLINE_TEMPLATE.md`: documented `--input`, `--emit-updated`, and blank line insertion
+- CLI help and examples updated to show `--input` as recommended pattern
+
 ## [0.1.6] - 2026-02-23
 
 ### Changed
@@ -96,3 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.2]: https://github.com/lispmeister/hashline/releases/tag/v0.1.2
 [0.1.1]: https://github.com/lispmeister/hashline/releases/tag/v0.1.1
 [0.1.0]: https://github.com/lispmeister/hashline/releases/tag/v0.1.0
+[0.1.7]: https://github.com/lispmeister/hashline/releases/tag/v0.1.7
+[0.1.6]: https://github.com/lispmeister/hashline/releases/tag/v0.1.6
+[0.1.5]: https://github.com/lispmeister/hashline/releases/tag/v0.1.5
+[0.1.4]: https://github.com/lispmeister/hashline/releases/tag/v0.1.4
+[0.1.3]: https://github.com/lispmeister/hashline/releases/tag/v0.1.3
