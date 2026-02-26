@@ -386,6 +386,7 @@ pub fn format_json_anchors(ast: &Value) -> String {
 }
 
 /// JSON-specific edit operations.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(untagged)]
 pub enum JsonEdit {

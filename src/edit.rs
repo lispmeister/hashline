@@ -660,7 +660,7 @@ pub fn apply_replace_edits(
         }
 
         let line = current[..match_pos].bytes().filter(|b| *b == b'\n').count() + 1;
-        if first_changed_line.map_or(true, |existing| line < existing) {
+        if first_changed_line.is_none_or(|existing| line < existing) {
             first_changed_line = Some(line);
         }
         current = current.replacen(op.old_text.as_str(), op.new_text.as_str(), 1);
