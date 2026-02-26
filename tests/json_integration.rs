@@ -3,7 +3,10 @@ use hashline::json::{
     InsertAtPathOp, JsonEdit, JsonError, SetPathOp,
 };
 use serde_json::{json, Value};
+use std::fs;
 use std::path::Path;
+use std::process::Command;
+use tempfile::NamedTempFile;
 
 fn load_small() -> Value {
     parse_json_ast(Path::new("tests/fixtures/json/small.json")).unwrap()
@@ -348,4 +351,81 @@ fn json_insert_array_index() {
     assert_eq!(users[2]["name"], "Bob Smith");
     assert_eq!(users[0]["name"], "Alice Johnson");
     assert_eq!(users[3]["name"], "Charlie Brown");
+}
+
+#[test]
+fn cli_json_roundtrip_special_keys() {
+    let tmp = NamedTempFile::new().unwrap();
+    fs::write(tmp.path(), r#"{"a.b": {"c d": 1}}"#).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_hashline"))
+        .args(["json-read", tmp.path().to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains(r#"// $["a.b"]:"#));
+    assert!(stdout.contains(r#"// $["a.b"]["c d"]:"#));
+
+    let ast: Value = serde_json::from_str(&fs::read_to_string(tmp.path()).unwrap()).unwrap();
+    let anchor_path = r#"$["a.b"]["c d"]"#;
+    let anchor = compute_json_anchor(anchor_path, &ast["a.b"]["c d"]);
+    let payload = json!({
+        "path": tmp.path().to_str().unwrap(),
+        "edits": [
+            {"set_path": {"anchor": anchor, "value": 2}}
+        ]
+    });
+    let payload_file = NamedTempFile::new().unwrap();
+    fs::write(
+        payload_file.path(),
+        serde_json::to_string(&payload).unwrap(),
+    )
+    .unwrap();
+
+    let apply_output = Command::new(env!("CARGO_BIN_EXE_hashline"))
+        .args([
+            "json-apply",
+            "--input",
+            payload_file.path().to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(apply_output.status.success());
+
+    let updated: Value = serde_json::from_str(&fs::read_to_string(tmp.path()).unwrap()).unwrap();
+    assert_eq!(updated["a.b"]["c d"], 2);
+}
+
+#[test]
+fn cli_json_apply_mismatch_reports_error() {
+    let tmp = NamedTempFile::new().unwrap();
+    fs::write(tmp.path(), r#"{"version": "1.0"}"#).unwrap();
+
+    let payload = json!({
+        "path": tmp.path().to_str().unwrap(),
+        "edits": [
+            {"set_path": {"anchor": "$.version:ff", "value": "2.0"}}
+        ]
+    });
+    let payload_file = NamedTempFile::new().unwrap();
+    fs::write(
+        payload_file.path(),
+        serde_json::to_string(&payload).unwrap(),
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_hashline"))
+        .args([
+            "json-apply",
+            "--input",
+            payload_file.path().to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("expected hash"));
+    assert!(stderr.contains("current hash"));
+    assert!(stderr.contains("updated anchor"));
 }

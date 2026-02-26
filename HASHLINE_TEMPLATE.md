@@ -100,17 +100,24 @@ hashline json-read package.json
   "name": "my-project",
   // $.version:a7
   "version": "1.0.0"
+Anchors that include dots, spaces, or brackets use bracket notation (e.g. `$["a.b"]["c d"]`). Use the same representation when constructing JSON edits.
+
 }
 
-# Apply semantic edits
-hashline json-apply << 'EOF'
+# Apply semantic edits (save as json-edits.json)
+```json
 {
   "path": "package.json",
   "edits": [
     {"set_path": {"anchor": "$.version:a7", "value": "1.2.0"}}
   ]
 }
-EOF
+```
+
+```bash
+hashline json-apply --input json-edits.json
+```
+
 ```
 
 ### JSON Operations

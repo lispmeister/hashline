@@ -1,4 +1,8 @@
 use hashline::{apply_replace_edits, *};
+use serde_json::json;
+use std::fs;
+use tempfile::NamedTempFile;
+
 use std::process::Command;
 
 fn hashline_bin() -> Command {
@@ -815,6 +819,7 @@ fn replace_basic_substitution() {
     let result = apply_replace_edits(content, &edits).unwrap();
     assert_eq!(result.content, "hi world\ngoodbye world");
     assert_eq!(result.replacements, 1);
+    assert_eq!(result.first_changed_line, Some(1));
 }
 
 #[test]
@@ -828,6 +833,8 @@ fn replace_multiline_old_text() {
     }];
     let result = apply_replace_edits(content, &edits).unwrap();
     assert_eq!(result.content, "fn foo() {\n    let x = 42;\n}\n");
+    assert_eq!(result.replacements, 1);
+    assert_eq!(result.first_changed_line, Some(2));
 }
 
 #[test]
@@ -881,6 +888,7 @@ fn replace_skips_anchor_edits() {
     let result = apply_replace_edits(content, &edits).unwrap();
     assert_eq!(result.content, content); // unchanged
     assert_eq!(result.replacements, 0);
+    assert_eq!(result.first_changed_line, None);
 }
 
 #[test]
@@ -903,6 +911,7 @@ fn replace_multiple_ops_sequential() {
     let result = apply_replace_edits(content, &edits).unwrap();
     assert_eq!(result.content, "ALPHA beta GAMMA");
     assert_eq!(result.replacements, 2);
+    assert_eq!(result.first_changed_line, Some(1));
 }
 
 #[test]
@@ -1043,7 +1052,45 @@ fn cli_accepts_u32_max_start_line() {
         .args(["read", "--start-line", &max, "src/cli.rs"])
         .output()
         .unwrap();
+
     assert!(output.status.success());
     // File is much smaller, so no output — but the value is accepted
     assert!(output.stdout.is_empty());
+}
+
+#[test]
+fn cli_emit_updated_handles_replace_only() {
+    let tmp = NamedTempFile::new().unwrap();
+    fs::write(tmp.path(), "foo\nbar\n").unwrap();
+
+    let payload = json!({
+        "path": tmp.path().to_str().unwrap(),
+        "edits": [
+            {"replace": {"old_text": "foo", "new_text": "FOO"}}
+        ]
+    });
+    let payload_file = NamedTempFile::new().unwrap();
+    fs::write(
+        payload_file.path(),
+        serde_json::to_string(&payload).unwrap(),
+    )
+    .unwrap();
+
+    let output = hashline_bin()
+        .args([
+            "apply",
+            "--emit-updated",
+            "--input",
+            payload_file.path().to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("---"));
+    assert!(stdout.contains("FOO"));
+    assert!(stdout.contains("1:"));
+    let updated = fs::read_to_string(tmp.path()).unwrap();
+    assert_eq!(updated, "FOO\nbar\n");
 }

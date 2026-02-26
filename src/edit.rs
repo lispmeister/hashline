@@ -620,6 +620,7 @@ fn track_first_changed(first: &mut Option<usize>, line: usize) {
 pub struct ReplaceResult {
     pub content: String,
     pub replacements: usize,
+    pub first_changed_line: Option<usize>,
 }
 
 /// Apply `replace` edits (exact substring replacement) to file content.
@@ -633,37 +634,41 @@ pub fn apply_replace_edits(
 ) -> Result<ReplaceResult, Box<dyn std::error::Error>> {
     let mut current = content.to_string();
     let mut total_replacements = 0;
-
+    let mut first_changed_line: Option<usize> = None;
     for edit in edits {
         let op = match edit {
             HashlineEdit::Replace { replace } => replace,
             _ => continue,
         };
-
         if op.old_text.is_empty() {
             return Err("replace edit: old_text must not be empty".into());
         }
+        let mut match_iter = current.match_indices(op.old_text.as_str());
+        let (match_pos, _) = match_iter
+            .next()
+            .ok_or_else(|| format!("replace edit: old_text not found in file:\n{}", op.old_text))?;
+        let duplicate_count = match_iter.count();
 
-        let count = current.matches(op.old_text.as_str()).count();
-        if count == 0 {
-            return Err(
-                format!("replace edit: old_text not found in file:\n{}", op.old_text).into(),
+        if duplicate_count > 0 {
+            let total = duplicate_count + 1;
+            return Err(format!(
+                    "replace edit: old_text matches {} locations — add more context to make it unique:\n{}",
+                    total, op.old_text
+                )
+                .into(),
             );
         }
-        if count > 1 {
-            return Err(format!(
-                "replace edit: old_text matches {} locations — add more context to make it unique:\n{}",
-                count, op.old_text
-            )
-            .into());
-        }
 
+        let line = current[..match_pos].bytes().filter(|b| *b == b'\n').count() + 1;
+        if first_changed_line.map_or(true, |existing| line < existing) {
+            first_changed_line = Some(line);
+        }
         current = current.replacen(op.old_text.as_str(), op.new_text.as_str(), 1);
         total_replacements += 1;
     }
-
     Ok(ReplaceResult {
         content: current,
         replacements: total_replacements,
+        first_changed_line,
     })
 }

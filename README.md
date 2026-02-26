@@ -80,8 +80,8 @@ cargo install --path .
 # 1. Read — get LINE:HASH anchors
 hashline read src/main.rs
 
-# 2. Edit — reference anchors, batch changes, atomic apply
-hashline apply << 'EOF'
+# 2. Edit — reference anchors, batch changes, atomic apply (save as edits.json)
+```json
 {
   "path": "src/main.rs",
   "edits": [
@@ -89,25 +89,17 @@ hashline apply << 'EOF'
     {"insert_after": {"anchor": "5:0e", "text": "// end of main"}}
   ]
 }
-EOF
+```
 
-# 3. Verify — re-read just the changed region
+```bash
+hashline apply --emit-updated --input edits.json
+```
+
+# 3. Verify — re-read just the changed region (useful if you skipped --emit-updated)
+```bash
 hashline read --start-line 4 --lines 3 src/main.rs
 ```
 
-Alternatively, read edits from a file (avoids heredoc shell guard issues):
-
-```bash
-hashline apply --input edits.json
-```
-
-Use `--emit-updated` to get fresh anchors without a separate re-read:
-
-```bash
-hashline apply --emit-updated << 'EOF'
-...
-EOF
-```
 
 ### Edit operations
 
@@ -183,9 +175,11 @@ hashline json-read package.json
   "express": "^4.17.1"
   }
 }
+Anchors that include dots, spaces, or brackets are emitted with bracket notation (for example `$["a.b"]["c d"]`). Use the same form when constructing JSON edits.
 
-# 2. Apply semantic JSON edits
-hashline json-apply << 'EOF'
+
+# 2. Apply semantic JSON edits (save as json-edits.json)
+```json
 {
   "path": "package.json",
   "edits": [
@@ -193,7 +187,10 @@ hashline json-apply << 'EOF'
     {"set_path": {"anchor": "$.dependencies:27", "value": {"express": "^4.17.1", "lodash": "^4.17.0"}}}
   ]
 }
-EOF
+```
+
+```bash
+hashline json-apply --input json-edits.json
 ```
 
 ### JSON edit operations

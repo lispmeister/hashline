@@ -1,5 +1,7 @@
 use clap::Parser;
 use std::io::Read;
+use std::path::Path;
+
 use std::process;
 
 mod cli;
@@ -10,8 +12,10 @@ mod hash;
 mod heuristics;
 mod json;
 mod parse;
+mod util;
 
 use cli::{Cli, Commands};
+use util::read_normalized;
 
 fn main() {
     let cli = Cli::parse();
@@ -22,20 +26,12 @@ fn main() {
             start_line,
             lines,
         } => {
-            let content = match std::fs::read_to_string(&file) {
+            let content = match read_normalized(Path::new(&file)) {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("Error reading {}: {}", file, e);
                     process::exit(2);
                 }
-            };
-            // Normalize line endings
-            let content = content.replace("\r\n", "\n");
-            // Strip trailing newline for consistent formatting
-            let content = if content.ends_with('\n') {
-                &content[..content.len() - 1]
-            } else {
-                &content
             };
             let all_lines: Vec<&str> = content.split('\n').collect();
             let start_idx = start_line.saturating_sub(1).min(all_lines.len());
@@ -79,19 +75,12 @@ fn main() {
                 }
             };
 
-            let content = match std::fs::read_to_string(&params.path) {
+            let content = match read_normalized(Path::new(&params.path)) {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("Error reading {}: {}", params.path, e);
                     process::exit(2);
                 }
-            };
-            let content = content.replace("\r\n", "\n");
-            let content = if content.ends_with('\n') {
-                // Preserve trailing newline awareness
-                content[..content.len() - 1].to_string()
-            } else {
-                content
             };
 
             // Anchor edits run first, then replace edits on the result
@@ -121,17 +110,22 @@ fn main() {
                 }
             };
 
-            let final_content = if replace_edits.is_empty() {
-                anchor_result.content
-            } else {
-                match edit::apply_replace_edits(&anchor_result.content, &replace_edits) {
-                    Ok(r) => r.content,
+            let mut final_content = anchor_result.content;
+            let mut replace_first_changed = None;
+            let mut replace_replacements = 0usize;
+            if !replace_edits.is_empty() {
+                match edit::apply_replace_edits(&final_content, &replace_edits) {
+                    Ok(r) => {
+                        replace_first_changed = r.first_changed_line;
+                        replace_replacements = r.replacements;
+                        final_content = r.content;
+                    }
                     Err(e) => {
                         eprintln!("Error: {}", e);
                         process::exit(2);
                     }
                 }
-            };
+            }
 
             let mut output = final_content;
             output.push('\n');
@@ -146,16 +140,16 @@ fn main() {
             }
 
             let had_anchor_changes = anchor_result.first_changed_line.is_some();
-            let had_replace_changes = !replace_edits.is_empty();
+            let had_replace_changes = replace_replacements > 0;
             if emit_updated {
-                if let Some(first_line) = anchor_result.first_changed_line {
-                    let updated = std::fs::read_to_string(&params.path).unwrap_or_default();
-                    let updated = updated.replace("\r\n", "\n");
-                    let updated = if updated.ends_with('\n') {
-                        &updated[..updated.len() - 1]
-                    } else {
-                        &updated
-                    };
+                let first_line = match (anchor_result.first_changed_line, replace_first_changed) {
+                    (Some(a), Some(b)) => Some(a.min(b)),
+                    (Some(a), None) => Some(a),
+                    (None, Some(b)) => Some(b),
+                    (None, None) => None,
+                };
+                if let Some(first_line) = first_line {
+                    let updated = read_normalized(Path::new(&params.path)).unwrap_or_default();
                     let all_lines: Vec<&str> = updated.split('\n').collect();
                     let context = 2;
                     let start = first_line.saturating_sub(1 + context);
@@ -177,19 +171,18 @@ fn main() {
             }
         }
         Commands::Hash { file } => {
-            let content = match std::fs::read_to_string(&file) {
+            let content = match read_normalized(Path::new(&file)) {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("Error reading {}: {}", file, e);
                     process::exit(2);
                 }
             };
-            let content = content.replace("\r\n", "\n");
-            let content = if content.ends_with('\n') {
-                &content[..content.len() - 1]
-            } else {
-                &content
-            };
+            for (i, line) in content.split('\n').enumerate() {
+                let num = i + 1;
+                println!("{}:{}", num, hash::compute_line_hash(num, line));
+            }
+
             for (i, line) in content.split('\n').enumerate() {
                 let num = i + 1;
                 println!("{}:{}", num, hash::compute_line_hash(num, line));

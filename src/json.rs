@@ -87,8 +87,6 @@ enum PathSegment {
     Index(usize),
 }
 
-/// Parse a JSONPath string into segments.
-/// Supports: `$`, `$.a`, `$.a.b`, `$.a[0]`, `$.a[0].b`, etc.
 fn parse_path_segments(path: &str) -> Result<Vec<PathSegment>, JsonError> {
     if path == "$" {
         return Ok(vec![]);
@@ -97,16 +95,21 @@ fn parse_path_segments(path: &str) -> Result<Vec<PathSegment>, JsonError> {
         return Err(format!("Path must start with '$': {}", path).into());
     }
 
-    let tail = &path[1..]; // everything after '$'
+    let tail = &path[1..];
     let bytes = tail.as_bytes();
     let len = bytes.len();
     let mut i = 0;
     let mut segments = Vec::new();
-
     while i < len {
         match bytes[i] {
             b'.' => {
-                i += 1; // skip '.'
+                i += 1;
+                if i >= len {
+                    return Err(format!("Path cannot end with '.': {}", path).into());
+                }
+                if bytes[i] == b'[' {
+                    continue;
+                }
                 let start = i;
                 while i < len && bytes[i] != b'.' && bytes[i] != b'[' {
                     i += 1;
@@ -118,19 +121,58 @@ fn parse_path_segments(path: &str) -> Result<Vec<PathSegment>, JsonError> {
                 segments.push(PathSegment::Key(key.to_string()));
             }
             b'[' => {
-                i += 1; // skip '['
-                let start = i;
-                while i < len && bytes[i] != b']' {
+                if i + 1 >= len {
+                    return Err(format!("Unterminated bracket segment in path: {}", path).into());
+                }
+                if bytes[i + 1] == b'"' {
+                    let start_quote = i + 1;
+                    let mut j = start_quote + 1;
+                    while j < len {
+                        match bytes[j] {
+                            b'\\' => {
+                                j += 1;
+                                if j >= len {
+                                    return Err(
+                                        format!("Unterminated escape in path: {}", path).into()
+                                    );
+                                }
+                                j += 1;
+                            }
+                            b'"' => break,
+                            _ => j += 1,
+                        }
+                    }
+                    if j >= len {
+                        return Err(format!("Unterminated quoted key in path: {}", path).into());
+                    }
+                    let str_slice = &tail[start_quote..=j];
+                    let key: String = serde_json::from_str(str_slice)
+                        .map_err(|_| format!("Invalid quoted key in path: {}", path))?;
+                    let closing_bracket = j + 1;
+                    if closing_bracket >= len || bytes[closing_bracket] != b']' {
+                        return Err(format!("Missing closing ']' in path: {}", path).into());
+                    }
+                    segments.push(PathSegment::Key(key));
+                    i = closing_bracket + 1;
+                } else {
                     i += 1;
+                    let start = i;
+                    while i < len && bytes[i].is_ascii_digit() {
+                        i += 1;
+                    }
+                    if start == i {
+                        return Err(format!("Expected array index in path: {}", path).into());
+                    }
+                    let idx_str = &tail[start..i];
+                    let idx: usize = idx_str.parse().map_err(|_| {
+                        format!("Invalid array index '{}' in path: {}", idx_str, path)
+                    })?;
+                    if i >= len || bytes[i] != b']' {
+                        return Err(format!("Missing closing ']' in path: {}", path).into());
+                    }
+                    i += 1;
+                    segments.push(PathSegment::Index(idx));
                 }
-                let idx_str = &tail[start..i];
-                let idx: usize = idx_str
-                    .parse()
-                    .map_err(|_| format!("Invalid array index '{}' in path: {}", idx_str, path))?;
-                if i < len && bytes[i] == b']' {
-                    i += 1; // skip ']'
-                }
-                segments.push(PathSegment::Index(idx));
             }
             other => {
                 return Err(
@@ -141,6 +183,31 @@ fn parse_path_segments(path: &str) -> Result<Vec<PathSegment>, JsonError> {
     }
 
     Ok(segments)
+}
+fn is_dot_compatible_key(key: &str) -> bool {
+    let mut chars = key.chars();
+    match chars.next() {
+        Some(c) if c == '_' || c.is_ascii_alphabetic() => {}
+        _ => return false,
+    }
+    chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
+}
+fn append_key_path(base: &str, key: &str) -> String {
+    if is_dot_compatible_key(key) {
+        if base == "$" {
+            format!("$.{}", key)
+        } else {
+            format!("{}.{}", base, key)
+        }
+    } else {
+        let quoted =
+            serde_json::to_string(key).expect("failed to quote JSON key for path generation");
+        if base == "$" {
+            format!("$[{}]", quoted)
+        } else {
+            format!("{}[{}]", base, quoted)
+        }
+    }
 }
 
 /// Navigate immutably to the node identified by `segments`.
@@ -558,11 +625,7 @@ fn format_json_with_anchors_inner<W: std::fmt::Write>(
                 keys.sort_unstable();
                 for (index, key) in keys.iter().enumerate() {
                     let child = map.get(*key).unwrap();
-                    let child_path = if current_path == "$" {
-                        format!("$.{}", key)
-                    } else {
-                        format!("{}.{}", current_path, key)
-                    };
+                    let child_path = append_key_path(current_path, key);
 
                     write_indent(w, indent + 1)?;
                     writeln!(w, "// {}", compute_json_anchor(&child_path, child))?;
@@ -765,6 +828,25 @@ mod tests {
                 PathSegment::Key("name".to_string()),
             ]
         );
+    }
+    #[test]
+    fn test_parse_path_segments_quoted_key() {
+        let segs = parse_path_segments(r#"$["a.b"]["c d"]"#).unwrap();
+        assert_eq!(
+            segs,
+            vec![
+                PathSegment::Key("a.b".to_string()),
+                PathSegment::Key("c d".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_append_key_path_bracket_notation() {
+        assert_eq!(append_key_path("$", "foo"), "$.foo");
+        assert_eq!(append_key_path("$.foo", "bar"), "$.foo.bar");
+        assert_eq!(append_key_path("$", "a.b"), r#"$["a.b"]"#);
+        assert_eq!(append_key_path(r#"$["a.b"]"#, "c d"), r#"$["a.b"]["c d"]"#);
     }
 
     #[test]
