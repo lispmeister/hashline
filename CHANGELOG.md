@@ -61,7 +61,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Performance regression test rig: `bench --json` flag, `benchmarks/compare.py`, per-release result files, and `bench-release.yml` workflow
 - `BENCHMARKS.md`: Rust vs Bun throughput comparison, hash parity table, 100-edit scenario
-- Rust toolchain pinned to 1.93.0 via `rust-toolchain.toml`
+- Rust toolchain pinned to 1.93.1 via `rust-toolchain.toml`
 
 ### Fixed
 

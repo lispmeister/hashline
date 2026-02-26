@@ -62,9 +62,16 @@ Exit codes:\n\
     1  Hash mismatch — stderr contains updated LINE:HASH anchors, retry with those\n\
     2  Other error (bad JSON, file not found, ambiguous replace match, etc.)",
         after_long_help = "EXAMPLES\n\
-    Read edits from a file (avoids heredoc shell guard issues):\n\
-        hashline apply --input edits.json\n\n\
-    Replace one line (heredoc):\n\
+    Recommended (writes payload to disk, emits fresh anchors):\n\
+        hashline apply --emit-updated --input edits.json\n\
+    edits.json:\n\
+        {\n\
+          \"path\": \"src/main.rs\",\n\
+          \"edits\": [\n\
+            {\"set_line\": {\"anchor\": \"4:01\", \"new_text\": \"    println!(\\\"goodbye\\\");\"}}\n\
+          ]\n\
+        }\n\n\
+    Fallback heredoc for simple payloads:\n\
         hashline apply << 'EOF'\n\
         {\"path\":\"src/main.rs\",\"edits\":[{\"set_line\":{\"anchor\":\"4:01\",\"new_text\":\"    println!(\\\"goodbye\\\");\"}}]}\n\
         EOF\n\n\
@@ -123,7 +130,17 @@ Input format:\n\
 Supported operations: set_path, insert_at_path, delete_path.\n\n\
 Exit codes: 0 = success, 1 = hash mismatch, 2 = other error",
         after_long_help = "EXAMPLES\n\
-    Set a JSON value:\n\
+    Recommended (writes payload to disk, emits fresh anchors):\n\
+        hashline json-apply --emit-updated --input json-edits.json\n\
+    json-edits.json:\n\
+        {\n\
+          \"path\": \"package.json\",\n\
+          \"edits\": [\n\
+            {\"set_path\": {\"anchor\": \"$.version:a1\", \"value\": \"1.2.3\"}}\n\
+          ]\n\
+        }\n\n\
+    Keys containing dots, spaces, or brackets use bracket notation (e.g. $[\"a.b\"][\"c d\"]).\n\n\
+    Fallback heredoc for simple payloads:\n\
         hashline json-apply << 'EOF'\n\
         {\"path\":\"package.json\",\"edits\":[{\"set_path\":{\"anchor\":\"$.version:a1\",\"value\":\"1.2.3\"}}]}\n\
         EOF"

@@ -190,7 +190,7 @@ Anchors that include dots, spaces, or brackets are emitted with bracket notation
 ```
 
 ```bash
-hashline json-apply --input json-edits.json
+hashline json-apply --emit-updated --input json-edits.json
 ```
 
 ### JSON edit operations
@@ -204,6 +204,8 @@ hashline json-apply --input json-edits.json
 ```json
 {"insert_at_path": {"anchor": "$.dependencies:27", "key": "lodash", "value": "^4.17.0"}}
 ```
+Provide either `key` (object insertion) or `index` (array insertion); specifying both returns an error.
+
 
 **`delete_path`** — remove a value:
 ```json
@@ -241,6 +243,11 @@ See also [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) for instructions for oth
 2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `AGENTS.md` or equivalent rules file — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
 
 The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
+
+## Usage Logging
+
+Hashline appends a one-line CSV record to `~/.local/state/hashline/usage.log` on macOS/Linux (or `%APPDATA%\hashline\usage.log` on Windows) after each command. Set `HASHLINE_USAGE_LOG` to override the location, or export `HASHLINE_DISABLE_USAGE_LOG=1` to skip logging entirely.
+
 
 ## Why Not Diffs or String Replacement?
 

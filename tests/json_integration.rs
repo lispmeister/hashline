@@ -16,6 +16,10 @@ fn load_medium() -> Value {
     parse_json_ast(Path::new("tests/fixtures/json/medium.json")).unwrap()
 }
 
+fn load_large() -> Value {
+    parse_json_ast(Path::new("tests/fixtures/json/large.json")).unwrap()
+}
+
 // ---------------------------------------------------------------------------
 // small.json tests
 // ---------------------------------------------------------------------------
@@ -351,6 +355,43 @@ fn json_insert_array_index() {
     assert_eq!(users[2]["name"], "Bob Smith");
     assert_eq!(users[0]["name"], "Alice Johnson");
     assert_eq!(users[3]["name"], "Charlie Brown");
+}
+
+// ---------------------------------------------------------------------------
+// large.json tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn json_large_fixture_round_trip() {
+    let mut ast = load_large();
+    let anchor = compute_json_anchor("$.items[0].name", &ast["items"][0]["name"]);
+
+    let result = apply_json_edits(
+        &mut ast,
+        &[JsonEdit::SetPath {
+            set_path: SetPathOp {
+                anchor,
+                value: json!("Renamed Item 0"),
+            },
+        }],
+    );
+
+    assert!(
+        result.is_ok(),
+        "set_path on large fixture failed: {:?}",
+        result.err()
+    );
+    assert_eq!(ast["items"][0]["name"], "Renamed Item 0");
+
+    let formatted = format_json_anchors(&ast);
+    assert!(
+        formatted.contains("// $.metadata.version:"),
+        "missing metadata version anchor"
+    );
+    assert!(
+        formatted.contains("// $.items[99].name:"),
+        "missing deep array anchor"
+    );
 }
 
 #[test]

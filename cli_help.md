@@ -4,24 +4,48 @@ AGENT WORKFLOW
 
     1. hashline read src/foo.rs
     Output: LINE:HASH|content for each line. Collect anchors for lines to change.
+    2. hashline apply --emit-updated --input edits.json
+       Recommended: write your JSON payload to disk and run apply with --emit-updated so
+       fresh anchors are printed automatically. Example edits.json:
 
-    2. cat << 'EOF' | hashline apply
-    {"path":"src/foo.rs","edits":[{"set_line":{"anchor":"4:01","new_text":"..."}}]}
-    EOF
-    Edits are atomic — all validate before any mutation. On hash mismatch
-    (exit 1), stderr shows updated LINE:HASH refs; retry with those anchors.
+           {
+             "path": "src/foo.rs",
+             "edits": [
+               {"set_line": {"anchor": "4:01", "new_text": "    println!(\"goodbye\");"}}
+             ]
+           }
 
+       Fallback for simple payloads:
+
+           cat <<'EOF' | hashline apply
+           {"path":"src/foo.rs","edits":[{"set_line":{"anchor":"4:01","new_text":"..."}}]}
+           EOF
     3. hashline read --start-line 3 --lines 5 src/foo.rs
     Verify just the changed region without re-reading the whole file.
 
     For JSON files:
-    1. hashline json-read package.json
-    Output: JSON with // $.path:hash anchors. Collect anchors for values to change.
 
-    2. cat << 'EOF' | hashline json-apply
-    {"path":"package.json","edits":[{"set_path":{"anchor":"$.version:a7","value":"1.2.0"}}]}
-    EOF
-    JSON edits are atomic and preserve valid JSON structure.
+    1. hashline json-read package.json
+       Output: JSON with // $.path:hash anchors. Keys containing dots/spaces/brackets are
+       emitted with bracket notation (e.g. $["a.b"]["c d"]). Collect anchors for values to change.
+
+    2. hashline json-apply --emit-updated --input json-edits.json
+       Recommended: store edits in json-edits.json and run with --emit-updated so the CLI
+       prints refreshed JSONPATH anchors. Example payload:
+
+           {
+             "path": "package.json",
+             "edits": [
+               {"set_path": {"anchor": "$.version:a7", "value": "1.2.0"}}
+             ]
+           }
+
+       Fallback heredoc:
+
+           cat <<'EOF' | hashline json-apply
+           {"path":"package.json","edits":[{"set_path":{"anchor":"$.version:a7","value":"1.2.0"}}]}
+           EOF
+
 
     EDIT OPERATIONS (Text Files)
     set_line      Replace one line:    {"set_line":{"anchor":"4:01","new_text":"..."}}

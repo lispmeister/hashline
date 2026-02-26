@@ -106,7 +106,7 @@ Anchors that include dots, spaces, or brackets use bracket notation (e.g. `$["a.
 ```
 
 ```bash
-hashline json-apply --input json-edits.json
+hashline json-apply --emit-updated --input json-edits.json
 ```
 
 ### JSON Operations
@@ -120,6 +120,8 @@ hashline json-apply --input json-edits.json
 ```json
 {"insert_at_path": {"anchor": "$.dependencies:a1", "key": "lodash", "value": "^4.17.0"}}
 ```
+Provide either `key` (object insertion) or `index` (array insertion); specifying both returns an error.
+
 
 **`delete_path`** — remove value:
 ```json

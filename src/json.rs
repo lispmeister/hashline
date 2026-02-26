@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 // ---------------------------------------------------------------------------
-// Error type (fix 3)
+// Error handling primitives
 // ---------------------------------------------------------------------------
 
 /// Typed error returned by `apply_json_edits`.
@@ -67,7 +67,7 @@ impl From<Box<dyn std::error::Error>> for JsonError {
 }
 
 // ---------------------------------------------------------------------------
-// Params struct (fix 5)
+// JSON apply parameters
 // ---------------------------------------------------------------------------
 
 /// Parameters for `json-apply`: file path and list of edits.
@@ -78,7 +78,7 @@ pub struct JsonApplyParams {
 }
 
 // ---------------------------------------------------------------------------
-// Path segment parser (fix 1)
+// JSONPath segment parser
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq)]
@@ -405,7 +405,7 @@ pub struct InsertAtPathOp {
     pub anchor: String,
     /// Object insertion: key name. Omit for array operations.
     pub key: Option<String>,
-    /// Array insertion: 0-based index. Omit to append. Ignored when `key` is set.
+    /// Array insertion: 0-based index. Omit to append. Provide either `key` or `index` (not both).
     pub index: Option<usize>,
     pub value: Value,
 }
@@ -530,6 +530,12 @@ fn insert_at_path(
     index: Option<usize>,
     value: Value,
 ) -> Result<(), JsonError> {
+    if key.is_some() && index.is_some() {
+        return Err(JsonError::Other(
+            "insert_at_path requires either `key` or `index`, not both".to_string(),
+        ));
+    }
+
     let segments = parse_path_segments(path)?;
     let target = query_path_segments_mut(ast, &segments)?;
     if let Some(key) = key {
@@ -868,6 +874,21 @@ mod tests {
         let mut ast = serde_json::json!({"a": {"b": 1}});
         insert_at_path(&mut ast, "$.a", Some("c"), None, serde_json::json!(3)).unwrap();
         assert_eq!(ast["a"]["c"], 3);
+    }
+
+    #[test]
+    fn test_insert_at_path_rejects_conflicting_key_and_index() {
+        let mut ast = serde_json::json!({"items": []});
+        let result = insert_at_path(
+            &mut ast,
+            "$.items",
+            Some("item"),
+            Some(0),
+            serde_json::json!(1),
+        );
+        assert!(
+            matches!(result, Err(JsonError::Other(msg)) if msg.contains("key") && msg.contains("index"))
+        );
     }
 
     #[test]

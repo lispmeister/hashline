@@ -12,10 +12,37 @@ mod hash;
 mod heuristics;
 mod json;
 mod parse;
+mod usage;
 mod util;
 
 use cli::{Cli, Commands};
+use usage::{log_event, UsageEvent, UsageResult};
 use util::read_normalized;
+
+fn record_usage(
+    command: &'static str,
+    result: UsageResult,
+    emit_updated: bool,
+    used_input_file: bool,
+) {
+    let _ = log_event(UsageEvent {
+        command,
+        result,
+        emit_updated,
+        used_input_file,
+    });
+}
+
+fn exit_with(
+    code: i32,
+    command: &'static str,
+    result: UsageResult,
+    emit_updated: bool,
+    used_input_file: bool,
+) -> ! {
+    record_usage(command, result, emit_updated, used_input_file);
+    process::exit(code);
+}
 
 fn main() {
     let cli = Cli::parse();
@@ -30,7 +57,7 @@ fn main() {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("Error reading {}: {}", file, e);
-                    process::exit(2);
+                    exit_with(2, "read", UsageResult::Error, false, false);
                 }
             };
             let all_lines: Vec<&str> = content.split('\n').collect();
@@ -45,24 +72,39 @@ fn main() {
                 let sliced_content = slice.join("\n");
                 println!("{}", format::format_hashlines(&sliced_content, start_line));
             }
+            record_usage("read", UsageResult::Success, false, false);
         }
         Commands::Apply {
             input,
             emit_updated,
         } => {
+            let used_input_file = input.is_some();
+
             let input_data = if let Some(ref path) = input {
                 match std::fs::read_to_string(path) {
                     Ok(c) => c,
                     Err(e) => {
                         eprintln!("Error reading input file {}: {}", path, e);
-                        process::exit(2);
+                        exit_with(
+                            2,
+                            "apply",
+                            UsageResult::Error,
+                            emit_updated,
+                            used_input_file,
+                        );
                     }
                 }
             } else {
                 let mut buf = String::new();
                 if let Err(e) = std::io::stdin().read_to_string(&mut buf) {
                     eprintln!("Error reading stdin: {}", e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
                 buf
             };
@@ -71,7 +113,13 @@ fn main() {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Invalid JSON input: {}", e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
             };
 
@@ -79,7 +127,13 @@ fn main() {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("Error reading {}: {}", params.path, e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
             };
 
@@ -102,10 +156,22 @@ fn main() {
                 Err(e) => {
                     if e.downcast_ref::<error::HashlineMismatchError>().is_some() {
                         eprintln!("{}", e);
-                        process::exit(1);
+                        exit_with(
+                            1,
+                            "apply",
+                            UsageResult::Mismatch,
+                            emit_updated,
+                            used_input_file,
+                        );
                     } else {
                         eprintln!("Error: {}", e);
-                        process::exit(2);
+                        exit_with(
+                            2,
+                            "apply",
+                            UsageResult::Error,
+                            emit_updated,
+                            used_input_file,
+                        );
                     }
                 }
             };
@@ -122,7 +188,13 @@ fn main() {
                     }
                     Err(e) => {
                         eprintln!("Error: {}", e);
-                        process::exit(2);
+                        exit_with(
+                            2,
+                            "apply",
+                            UsageResult::Error,
+                            emit_updated,
+                            used_input_file,
+                        );
                     }
                 }
             }
@@ -131,7 +203,13 @@ fn main() {
             output.push('\n');
             if let Err(e) = std::fs::write(&params.path, &output) {
                 eprintln!("Error writing {}: {}", params.path, e);
-                process::exit(2);
+                exit_with(
+                    2,
+                    "apply",
+                    UsageResult::Error,
+                    emit_updated,
+                    used_input_file,
+                );
             }
             if !anchor_result.warnings.is_empty() {
                 for w in &anchor_result.warnings {
@@ -169,13 +247,14 @@ fn main() {
             if !had_anchor_changes && !had_replace_changes {
                 println!("No changes applied.");
             }
+            record_usage("apply", UsageResult::Success, emit_updated, used_input_file);
         }
         Commands::Hash { file } => {
             let content = match read_normalized(Path::new(&file)) {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("Error reading {}: {}", file, e);
-                    process::exit(2);
+                    exit_with(2, "hash", UsageResult::Error, false, false);
                 }
             };
             for (i, line) in content.split('\n').enumerate() {
@@ -187,6 +266,7 @@ fn main() {
                 let num = i + 1;
                 println!("{}:{}", num, hash::compute_line_hash(num, line));
             }
+            record_usage("hash", UsageResult::Success, false, false);
         }
         Commands::JsonRead { file } => {
             use std::path::Path;
@@ -194,28 +274,43 @@ fn main() {
                 Ok(a) => a,
                 Err(e) => {
                     eprintln!("Error parsing JSON {}: {}", file, e);
-                    process::exit(2);
+                    exit_with(2, "json-read", UsageResult::Error, false, false);
                 }
             };
             println!("{}", json::format_json_anchors(&ast));
+            record_usage("json-read", UsageResult::Success, false, false);
         }
         Commands::JsonApply {
             input,
             emit_updated,
         } => {
+            let used_input_file = input.is_some();
+
             let input_data = if let Some(ref path) = input {
                 match std::fs::read_to_string(path) {
                     Ok(c) => c,
                     Err(e) => {
                         eprintln!("Error reading input file {}: {}", path, e);
-                        process::exit(2);
+                        exit_with(
+                            2,
+                            "json-apply",
+                            UsageResult::Error,
+                            emit_updated,
+                            used_input_file,
+                        );
                     }
                 }
             } else {
                 let mut buf = String::new();
                 if let Err(e) = std::io::stdin().read_to_string(&mut buf) {
                     eprintln!("Error reading stdin: {}", e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "json-apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
                 buf
             };
@@ -224,7 +319,13 @@ fn main() {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Invalid JSON input: {}", e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "json-apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
             };
 
@@ -233,7 +334,13 @@ fn main() {
                 Ok(a) => a,
                 Err(e) => {
                     eprintln!("Error parsing JSON {}: {}", params.path, e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "json-apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
             };
 
@@ -252,11 +359,23 @@ fn main() {
                             "Re-run `hashline json-read {}` to refresh anchors.",
                             params.path
                         );
-                        process::exit(1);
+                        exit_with(
+                            1,
+                            "json-apply",
+                            UsageResult::Mismatch,
+                            emit_updated,
+                            used_input_file,
+                        );
                     }
                     json::JsonError::Other(msg) => {
                         eprintln!("Error: {}", msg);
-                        process::exit(2);
+                        exit_with(
+                            2,
+                            "json-apply",
+                            UsageResult::Error,
+                            emit_updated,
+                            used_input_file,
+                        );
                     }
                 }
             }
@@ -266,12 +385,24 @@ fn main() {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("Error serializing JSON: {}", e);
-                    process::exit(2);
+                    exit_with(
+                        2,
+                        "json-apply",
+                        UsageResult::Error,
+                        emit_updated,
+                        used_input_file,
+                    );
                 }
             };
             if let Err(e) = std::fs::write(&params.path, output + "\n") {
                 eprintln!("Error writing {}: {}", params.path, e);
-                process::exit(2);
+                exit_with(
+                    2,
+                    "json-apply",
+                    UsageResult::Error,
+                    emit_updated,
+                    used_input_file,
+                );
             }
 
             if emit_updated {
@@ -279,6 +410,12 @@ fn main() {
                 println!("---");
                 println!("{}", json::format_json_anchors(&ast));
             }
+            record_usage(
+                "json-apply",
+                UsageResult::Success,
+                emit_updated,
+                used_input_file,
+            );
         }
     }
 }

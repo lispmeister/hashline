@@ -1,0 +1,1719 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "generated_at": "2026-02-26T00:00:00Z",
+    "source": "tests/fixtures/json/large.json"
+  },
+  "items": [
+    {
+      "id": 0,
+      "name": "Item 0",
+      "enabled": true,
+      "score": 1.0,
+      "tags": [
+        "tag-0",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/0",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "name": "Item 1",
+      "enabled": false,
+      "score": 1.5,
+      "tags": [
+        "tag-1",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/1",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "Item 2",
+      "enabled": true,
+      "score": 2.0,
+      "tags": [
+        "tag-2",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/2",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "Item 3",
+      "enabled": false,
+      "score": 2.5,
+      "tags": [
+        "tag-3",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/3",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "Item 4",
+      "enabled": true,
+      "score": 3.0,
+      "tags": [
+        "tag-4",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/4",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "Item 5",
+      "enabled": false,
+      "score": 3.5,
+      "tags": [
+        "tag-5",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/5",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "Item 6",
+      "enabled": true,
+      "score": 4.0,
+      "tags": [
+        "tag-6",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/6",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "Item 7",
+      "enabled": false,
+      "score": 4.5,
+      "tags": [
+        "tag-0",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/7",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "name": "Item 8",
+      "enabled": true,
+      "score": 5.0,
+      "tags": [
+        "tag-1",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/8",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "Item 9",
+      "enabled": false,
+      "score": 5.5,
+      "tags": [
+        "tag-2",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/9",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "Item 10",
+      "enabled": true,
+      "score": 6.0,
+      "tags": [
+        "tag-3",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/10",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "name": "Item 11",
+      "enabled": false,
+      "score": 6.5,
+      "tags": [
+        "tag-4",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/11",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "name": "Item 12",
+      "enabled": true,
+      "score": 7.0,
+      "tags": [
+        "tag-5",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/12",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "name": "Item 13",
+      "enabled": false,
+      "score": 7.5,
+      "tags": [
+        "tag-6",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/13",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "name": "Item 14",
+      "enabled": true,
+      "score": 8.0,
+      "tags": [
+        "tag-0",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/14",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "name": "Item 15",
+      "enabled": false,
+      "score": 8.5,
+      "tags": [
+        "tag-1",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/15",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "name": "Item 16",
+      "enabled": true,
+      "score": 9.0,
+      "tags": [
+        "tag-2",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/16",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "name": "Item 17",
+      "enabled": false,
+      "score": 9.5,
+      "tags": [
+        "tag-3",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/17",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "name": "Item 18",
+      "enabled": true,
+      "score": 10.0,
+      "tags": [
+        "tag-4",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/18",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "name": "Item 19",
+      "enabled": false,
+      "score": 10.5,
+      "tags": [
+        "tag-5",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/19",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "name": "Item 20",
+      "enabled": true,
+      "score": 11.0,
+      "tags": [
+        "tag-6",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/20",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "name": "Item 21",
+      "enabled": false,
+      "score": 11.5,
+      "tags": [
+        "tag-0",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/21",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "name": "Item 22",
+      "enabled": true,
+      "score": 12.0,
+      "tags": [
+        "tag-1",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/22",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "name": "Item 23",
+      "enabled": false,
+      "score": 12.5,
+      "tags": [
+        "tag-2",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/23",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "name": "Item 24",
+      "enabled": true,
+      "score": 13.0,
+      "tags": [
+        "tag-3",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/24",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "name": "Item 25",
+      "enabled": false,
+      "score": 13.5,
+      "tags": [
+        "tag-4",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/25",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "name": "Item 26",
+      "enabled": true,
+      "score": 14.0,
+      "tags": [
+        "tag-5",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/26",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "name": "Item 27",
+      "enabled": false,
+      "score": 14.5,
+      "tags": [
+        "tag-6",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/27",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "name": "Item 28",
+      "enabled": true,
+      "score": 15.0,
+      "tags": [
+        "tag-0",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/28",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "name": "Item 29",
+      "enabled": false,
+      "score": 15.5,
+      "tags": [
+        "tag-1",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/29",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "name": "Item 30",
+      "enabled": true,
+      "score": 16.0,
+      "tags": [
+        "tag-2",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/30",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "name": "Item 31",
+      "enabled": false,
+      "score": 16.5,
+      "tags": [
+        "tag-3",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/31",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "name": "Item 32",
+      "enabled": true,
+      "score": 17.0,
+      "tags": [
+        "tag-4",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/32",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "name": "Item 33",
+      "enabled": false,
+      "score": 17.5,
+      "tags": [
+        "tag-5",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/33",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "name": "Item 34",
+      "enabled": true,
+      "score": 18.0,
+      "tags": [
+        "tag-6",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/34",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "name": "Item 35",
+      "enabled": false,
+      "score": 18.5,
+      "tags": [
+        "tag-0",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/35",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "name": "Item 36",
+      "enabled": true,
+      "score": 19.0,
+      "tags": [
+        "tag-1",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/36",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "name": "Item 37",
+      "enabled": false,
+      "score": 19.5,
+      "tags": [
+        "tag-2",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/37",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "name": "Item 38",
+      "enabled": true,
+      "score": 20.0,
+      "tags": [
+        "tag-3",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/38",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "name": "Item 39",
+      "enabled": false,
+      "score": 20.5,
+      "tags": [
+        "tag-4",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/39",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "name": "Item 40",
+      "enabled": true,
+      "score": 21.0,
+      "tags": [
+        "tag-5",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/40",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 41,
+      "name": "Item 41",
+      "enabled": false,
+      "score": 21.5,
+      "tags": [
+        "tag-6",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/41",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "name": "Item 42",
+      "enabled": true,
+      "score": 22.0,
+      "tags": [
+        "tag-0",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/42",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 43,
+      "name": "Item 43",
+      "enabled": false,
+      "score": 22.5,
+      "tags": [
+        "tag-1",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/43",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "name": "Item 44",
+      "enabled": true,
+      "score": 23.0,
+      "tags": [
+        "tag-2",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/44",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 45,
+      "name": "Item 45",
+      "enabled": false,
+      "score": 23.5,
+      "tags": [
+        "tag-3",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/45",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 46,
+      "name": "Item 46",
+      "enabled": true,
+      "score": 24.0,
+      "tags": [
+        "tag-4",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/46",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 47,
+      "name": "Item 47",
+      "enabled": false,
+      "score": 24.5,
+      "tags": [
+        "tag-5",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/47",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 48,
+      "name": "Item 48",
+      "enabled": true,
+      "score": 25.0,
+      "tags": [
+        "tag-6",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/48",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 49,
+      "name": "Item 49",
+      "enabled": false,
+      "score": 25.5,
+      "tags": [
+        "tag-0",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/49",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 50,
+      "name": "Item 50",
+      "enabled": true,
+      "score": 26.0,
+      "tags": [
+        "tag-1",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/50",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 51,
+      "name": "Item 51",
+      "enabled": false,
+      "score": 26.5,
+      "tags": [
+        "tag-2",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/51",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 52,
+      "name": "Item 52",
+      "enabled": true,
+      "score": 27.0,
+      "tags": [
+        "tag-3",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/52",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 53,
+      "name": "Item 53",
+      "enabled": false,
+      "score": 27.5,
+      "tags": [
+        "tag-4",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/53",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 54,
+      "name": "Item 54",
+      "enabled": true,
+      "score": 28.0,
+      "tags": [
+        "tag-5",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/54",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 55,
+      "name": "Item 55",
+      "enabled": false,
+      "score": 28.5,
+      "tags": [
+        "tag-6",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/55",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 56,
+      "name": "Item 56",
+      "enabled": true,
+      "score": 29.0,
+      "tags": [
+        "tag-0",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/56",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 57,
+      "name": "Item 57",
+      "enabled": false,
+      "score": 29.5,
+      "tags": [
+        "tag-1",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/57",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 58,
+      "name": "Item 58",
+      "enabled": true,
+      "score": 30.0,
+      "tags": [
+        "tag-2",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/58",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 59,
+      "name": "Item 59",
+      "enabled": false,
+      "score": 30.5,
+      "tags": [
+        "tag-3",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/59",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 60,
+      "name": "Item 60",
+      "enabled": true,
+      "score": 31.0,
+      "tags": [
+        "tag-4",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/60",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 61,
+      "name": "Item 61",
+      "enabled": false,
+      "score": 31.5,
+      "tags": [
+        "tag-5",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/61",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 62,
+      "name": "Item 62",
+      "enabled": true,
+      "score": 32.0,
+      "tags": [
+        "tag-6",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/62",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 63,
+      "name": "Item 63",
+      "enabled": false,
+      "score": 32.5,
+      "tags": [
+        "tag-0",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/63",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 64,
+      "name": "Item 64",
+      "enabled": true,
+      "score": 33.0,
+      "tags": [
+        "tag-1",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/64",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 65,
+      "name": "Item 65",
+      "enabled": false,
+      "score": 33.5,
+      "tags": [
+        "tag-2",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/65",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 66,
+      "name": "Item 66",
+      "enabled": true,
+      "score": 34.0,
+      "tags": [
+        "tag-3",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/66",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 67,
+      "name": "Item 67",
+      "enabled": false,
+      "score": 34.5,
+      "tags": [
+        "tag-4",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/67",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 68,
+      "name": "Item 68",
+      "enabled": true,
+      "score": 35.0,
+      "tags": [
+        "tag-5",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/68",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 69,
+      "name": "Item 69",
+      "enabled": false,
+      "score": 35.5,
+      "tags": [
+        "tag-6",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/69",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 70,
+      "name": "Item 70",
+      "enabled": true,
+      "score": 36.0,
+      "tags": [
+        "tag-0",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/70",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 71,
+      "name": "Item 71",
+      "enabled": false,
+      "score": 36.5,
+      "tags": [
+        "tag-1",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/71",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 72,
+      "name": "Item 72",
+      "enabled": true,
+      "score": 37.0,
+      "tags": [
+        "tag-2",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/72",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 73,
+      "name": "Item 73",
+      "enabled": false,
+      "score": 37.5,
+      "tags": [
+        "tag-3",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/73",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 74,
+      "name": "Item 74",
+      "enabled": true,
+      "score": 38.0,
+      "tags": [
+        "tag-4",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/74",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 75,
+      "name": "Item 75",
+      "enabled": false,
+      "score": 38.5,
+      "tags": [
+        "tag-5",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/75",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 76,
+      "name": "Item 76",
+      "enabled": true,
+      "score": 39.0,
+      "tags": [
+        "tag-6",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/76",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 77,
+      "name": "Item 77",
+      "enabled": false,
+      "score": 39.5,
+      "tags": [
+        "tag-0",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/77",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 78,
+      "name": "Item 78",
+      "enabled": true,
+      "score": 40.0,
+      "tags": [
+        "tag-1",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/78",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 79,
+      "name": "Item 79",
+      "enabled": false,
+      "score": 40.5,
+      "tags": [
+        "tag-2",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/79",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 80,
+      "name": "Item 80",
+      "enabled": true,
+      "score": 41.0,
+      "tags": [
+        "tag-3",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/80",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 81,
+      "name": "Item 81",
+      "enabled": false,
+      "score": 41.5,
+      "tags": [
+        "tag-4",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/81",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 82,
+      "name": "Item 82",
+      "enabled": true,
+      "score": 42.0,
+      "tags": [
+        "tag-5",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/82",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 83,
+      "name": "Item 83",
+      "enabled": false,
+      "score": 42.5,
+      "tags": [
+        "tag-6",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/83",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 84,
+      "name": "Item 84",
+      "enabled": true,
+      "score": 43.0,
+      "tags": [
+        "tag-0",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/84",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 85,
+      "name": "Item 85",
+      "enabled": false,
+      "score": 43.5,
+      "tags": [
+        "tag-1",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/85",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 86,
+      "name": "Item 86",
+      "enabled": true,
+      "score": 44.0,
+      "tags": [
+        "tag-2",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/86",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 87,
+      "name": "Item 87",
+      "enabled": false,
+      "score": 44.5,
+      "tags": [
+        "tag-3",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/87",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 88,
+      "name": "Item 88",
+      "enabled": true,
+      "score": 45.0,
+      "tags": [
+        "tag-4",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/88",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 89,
+      "name": "Item 89",
+      "enabled": false,
+      "score": 45.5,
+      "tags": [
+        "tag-5",
+        "tag-4"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/89",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 90,
+      "name": "Item 90",
+      "enabled": true,
+      "score": 46.0,
+      "tags": [
+        "tag-6",
+        "tag-5"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/90",
+        "flags": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 91,
+      "name": "Item 91",
+      "enabled": false,
+      "score": 46.5,
+      "tags": [
+        "tag-0",
+        "tag-6"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/91",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 92,
+      "name": "Item 92",
+      "enabled": true,
+      "score": 47.0,
+      "tags": [
+        "tag-1",
+        "tag-7"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/92",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 93,
+      "name": "Item 93",
+      "enabled": false,
+      "score": 47.5,
+      "tags": [
+        "tag-2",
+        "tag-8"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/93",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 94,
+      "name": "Item 94",
+      "enabled": true,
+      "score": 48.0,
+      "tags": [
+        "tag-3",
+        "tag-9"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/94",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 95,
+      "name": "Item 95",
+      "enabled": false,
+      "score": 48.5,
+      "tags": [
+        "tag-4",
+        "tag-10"
+      ],
+      "details": {
+        "owner": "user-0",
+        "path": "/var/data/95",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 96,
+      "name": "Item 96",
+      "enabled": true,
+      "score": 49.0,
+      "tags": [
+        "tag-5",
+        "tag-0"
+      ],
+      "details": {
+        "owner": "user-1",
+        "path": "/var/data/96",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 97,
+      "name": "Item 97",
+      "enabled": false,
+      "score": 49.5,
+      "tags": [
+        "tag-6",
+        "tag-1"
+      ],
+      "details": {
+        "owner": "user-2",
+        "path": "/var/data/97",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 98,
+      "name": "Item 98",
+      "enabled": true,
+      "score": 50.0,
+      "tags": [
+        "tag-0",
+        "tag-2"
+      ],
+      "details": {
+        "owner": "user-3",
+        "path": "/var/data/98",
+        "flags": [
+          "beta"
+        ]
+      }
+    },
+    {
+      "id": 99,
+      "name": "Item 99",
+      "enabled": false,
+      "score": 50.5,
+      "tags": [
+        "tag-1",
+        "tag-3"
+      ],
+      "details": {
+        "owner": "user-4",
+        "path": "/var/data/99",
+        "flags": [
+          "beta"
+        ]
+      }
+    }
+  ]
+}

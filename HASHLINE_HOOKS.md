@@ -20,6 +20,11 @@ The hooks enforce rules 1 and 2 below. Rules 3 and 4 are not mechanically enforc
 | Batch all edits to one file in one apply call | ❌ (advisory only) |
 | Prefer anchor ops over `replace` (and semantic JSON ops over line-based) | ❌ (advisory only) |
 
+## Recommended CLI usage
+
+Prefer writing payloads to disk and invoking `hashline apply --emit-updated --input edits.json` (and `hashline json-apply --emit-updated --input json-edits.json`). `--emit-updated` keeps anchors fresh without a follow-up read, and `--input` avoids heredoc guardrails. Heredocs still work for simple payloads, but bracket-notation anchors (e.g. `$["a.b"]["c d"]`) are easier to read when they live in a file.
+
+
 ## Quick install via skill
 
 If you use Claude Code, the fastest way to set up hashline hooks in any project is the bundled skill:

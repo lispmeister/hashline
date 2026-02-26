@@ -44,35 +44,28 @@ All edits validate against the original file before mutating disk.
 
 ## Current Priorities (2026-02-26)
 
-### Blocking
-
-- **[BLOCKER] Fix JSON anchor encoding for special keys** — `hashline json-read` emits anchors like `$.a.b` for a literal key "a.b", but `json-apply` splits on `.`, so the edit fails. Switch to bracket notation (e.g. `$["a.b"]`), handle keys containing dots/brackets/quotes, and add regression tests covering library and CLI paths.
-
 ### High Priority
-
-- **[HIGH] Make `--emit-updated` previews reliable** — capture the earliest modified line even when only `replace` edits run, share the same logic with `json-apply`, and add tests so replace-only flows produce useful context.
-- **[HIGH] Add CLI/integration coverage for the JSON workflow** — exercise `json-read`, `json-apply`, hash mismatch diagnostics, the dotted-key fix above, and `--emit-updated`; run through the CLI rather than only unit tests.
-- **[HIGH] Refresh docs and prompts** — update README, CLI help, `AGENTS.md`, `HASHLINE_TEMPLATE.md`, and `HASHLINE_HOOKS.md` to emphasise `--input` usage, document JSON mismatch output, and remove statements that are now false (e.g. "`--start-line` not implemented").
-- **[HIGH] Finish the CLAUDE.md pruning + hook onboarding pass** — keep only what hooks cannot enforce, verify the skill/template instructions reference the new file locations, and ensure json-aware hooks are documented.
+- _None — backlog clear after docs/templates audit (2026-02-26)._
 
 ### Medium Priority
-
-- **[MED] Replace `/tmp/...` usage in unit tests** — e.g. `src/util.rs` still relies on hard-coded `/tmp/` paths; switch to `tempfile::NamedTempFile` to keep the suite portable.
-- **[MED] Consolidate file-reading normalization** — `src/main.rs` duplicates the same CRLF stripping/trailing newline trimming in five commands; extract a shared helper in `util.rs`.
-- **[MED] Clarify `InsertAtPathOp` semantics** — split object vs array insertion or fail loudly when both `key` and `index` are provided; add coverage once the API is explicit.
-- **[MED] Instrument hashline usage** — lightweight logging (read/apply counts, mismatch rates, `--emit-updated` adoption) to inform future prioritisation.
-
+- _None — usage logging and insert semantics addressed (2026-02-26)._
 ### Low Priority
+- _None — backlog cleared (2026-02-26)._
+### Recently Completed (2026-02-26)
 
-- **[LOW] Revisit the large JSON fixture** — either wire it into a benchmark/fuzz target or remove it to keep the repo lean.
-- **[LOW] Homebrew tap automation** — only tackle once core features stabilise; keep instructions but mark as backlog.
-- **[LOW] Tidy residual session comments** — remove `// (fix N)` breadcrumbs in `src/json.rs` and replace with meaningful section headers.
+- Fixed JSON anchor encoding for special keys (bracket notation) with new unit and CLI coverage.
+- Made `--emit-updated` previews reliable for replace-only edits and plumbed the logic through the CLI.
+- Added CLI/integration coverage for JSON workflows, including mismatch diagnostics and special-key round trips.
+- Refreshed README/AGENTS/HASHLINE_TEMPLATE docs to highlight `--input`, `--emit-updated`, and bracket notation.
+- Consolidated file reading via `util::read_normalized` and switched tests to `NamedTempFile`.
+- Updated CLI help, cli_help.md, and HASHLINE_HOOKS.md to push the `--emit-updated --input` workflow and bracket-notation anchors.
+- Added CLI usage instrumentation with opt-out env vars and documented log locations.
+- Enforced exclusive key/index handling for `insert_at_path` and documented the rule across templates.
+- Introduced tests/fixtures/json/large.json with regression coverage for deep anchors.
+- Documented the Homebrew tap automation plan in contrib/HOMEBREW_AUTOMATION.md.
 
-### Recently Completed
 
-- JSON engine was ported to Rust (`apply_json_edits`, canonical hashing, CLI plumbing).
-- Hook scripts now track both text and JSON commands with regression tests in `contrib/hooks/tests/test_hooks.sh`.
-- Fuzz tests cover core text workflows (hashing, formatting, parsing, edit application).
+
 
 ## Notes
 

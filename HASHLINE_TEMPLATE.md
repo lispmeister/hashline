@@ -34,10 +34,17 @@ hashline read --start-line 10 --lines 20 src/main.rs
 
 ## Editing
 
-Always use a heredoc. Batch all changes to a file into one `edits` array - edits are atomic (all succeed or none apply):
+Batch all changes to a file into one `edits` array - edits are atomic (all succeed or none apply).
+
+Prefer writing the payload to disk and invoking `hashline apply --emit-updated --input` (avoids heredoc guardrails and returns fresh anchors automatically):
 
 ```bash
-hashline apply << 'EOF'
+hashline apply --emit-updated --input edits.json
+```
+
+Example payload (`edits.json`):
+
+```json
 {
   "path": "src/main.rs",
   "edits": [
@@ -45,20 +52,19 @@ hashline apply << 'EOF'
     {"insert_after": {"anchor": "5:0e", "text": "fn helper() {\n    todo!()\n}"}}
   ]
 }
-EOF
 ```
 
-Alternatively, write the JSON to a temp file and use `--input` (avoids heredoc shell guard issues with dangerous-looking content):
+Fallback heredoc (fine for simple payloads):
 
 ```bash
-hashline apply --input /tmp/edits.json
-```
-
-Use `--emit-updated` to get fresh `LINE:HASH` anchors for the changed region without a separate re-read:
-
-```bash
-hashline apply --emit-updated << 'EOF'
-...
+hashline apply <<'EOF'
+{
+  "path": "src/main.rs",
+  "edits": [
+    {"set_line": {"anchor": "4:01", "new_text": "    println!(\"goodbye\");"}},
+    {"insert_after": {"anchor": "5:0e", "text": "fn helper() {\n    todo!()\n}"}}
+  ]
+}
 EOF
 ```
 
@@ -91,20 +97,23 @@ Use `\n` in strings for multi-line content.
 For JSON files, use the JSON-aware commands for semantic editing:
 
 ```bash
-# Read JSON with JSONPath anchors
 hashline json-read package.json
+```
 
-# Output example:
+Output example:
+
+```jsonc
 {
   // $.name:cd
   "name": "my-project",
   // $.version:a7
   "version": "1.0.0"
+}
+```
+
 Anchors that include dots, spaces, or brackets use bracket notation (e.g. `$["a.b"]["c d"]`). Use the same representation when constructing JSON edits.
 
-}
-
-# Apply semantic edits (save as json-edits.json)
+Prepare edits (`json-edits.json`):
 ```json
 {
   "path": "package.json",
@@ -115,7 +124,9 @@ Anchors that include dots, spaces, or brackets use bracket notation (e.g. `$["a.
 ```
 
 ```bash
-hashline json-apply --input json-edits.json
+hashline json-apply --emit-updated --input json-edits.json
+```
+
 ```
 
 ```
@@ -131,6 +142,8 @@ hashline json-apply --input json-edits.json
 ```json
 {"insert_at_path": {"anchor": "$.dependencies:a1", "key": "lodash", "value": "^4.17.0"}}
 ```
+Provide either `key` (object insertion) or `index` (array insertion); specifying both returns an error.
+
 
 **`delete_path`** — remove value:
 ```json
