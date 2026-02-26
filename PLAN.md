@@ -335,3 +335,155 @@ statistics on tool adoption, operation frequency, error rates, and failure modes
   time, invest in making it more robust; if hash mismatches are rare, deprioritize
   heuristic recovery)
 - Deferred: implementation TBD in a future session
+
+---
+
+### Priority Queue — 2026-02-26 Review (ordered)
+
+1. **Task RF-1: Restore JSON formatter output (CRITICAL)** — Rewrite `format_json_with_anchors_inner` so it uses real indentation without `{ }` placeholders, renders key/value pairs correctly, and add regression tests to guard the behavior.
+2. **Task RF-2: Fix canonical hash unit fixtures (CRITICAL)** — Replace the double-escaped JSON literals in `json::tests::test_canonical_hash_sorted_keys` so the test matches real input and tighten assertions around canonical hashing.
+3. **Task RF-3: Restore JSON anchor compatibility (CRITICAL)** — Update `parse_anchor` to accept 1–16 hex/alphanumeric hashes per the public contract and add coverage to prevent regressions.
+4. **Task RF-4: Improve `json-apply` mismatch diagnostics (CRITICAL)** — Emit both expected and actual hashes, limit stderr output to the changed anchor, and keep the rest of the file off stderr so agents can parse the response.
+5. **Task RF-5: Extend hook scripts to JSON commands (CRITICAL)** — Implement Task J2-1 (regex updates + hook tests) so `json-read`/`json-apply` are enforced and logged like text edits.
+6. **Task RF-6: Align CLI success messaging (HIGH)** — Make `hashline apply` and `hashline json-apply` share the same success/no-op output contract (no extra chatter by default).
+7. **Task RF-7: Avoid double cloning in `apply_json_edits` (MEDIUM)** — Validate anchors once, clone once, apply to the clone, and only swap on success to maintain atomicity without the extra copy.
+8. **Task RF-8: Harden filesystem tests (MEDIUM)** — Replace the fixed `/tmp/...` paths in `json.rs` unit tests with `tempfile::NamedTempFile` to avoid collisions under parallel runs.
+9. **Task RF-9: Clean up post-review lint (LOW)** — Drop the unused `fmt::Write` import and run `cargo fmt && cargo clippy` to keep the tree warning-free.
+10. **Task RF-10: Sync release collateral with version bumps (LOW)** — Ensure README install snippets and future release notes automatically track the crate version whenever `Cargo.toml` changes.
+
+---
+
+## Session 2026-02-26 — JSON-Aware Feature Fixes
+
+Code review of the `json-aware` branch found several critical bugs and gaps in the initial implementation. Tasks below track the fixes.
+
+### Task J-impl: Fix json.rs core engine
+
+**Status: DONE**
+
+Six bugs in `src/json.rs` and `src/main.rs` must be fixed before the feature ships:
+
+1. **Fake JSONPath traversal** — `query_path`, `set_path`, `insert_at_path`, `delete_path` only handle `$` and `$.toplevelkey`. Nested paths (`$.a.b.c`) and array indices (`$.arr[0]`) silently error. `insert_at_path` ignores its `_path` argument entirely and mutates the root. Must implement a real recursive path walker supporting: `$`, `$.key`, `$.a.b.c` (arbitrary depth), `$.arr[N]` (array index), and mixed (`$.users[0].name`).
+
+2. **Canonical hashing is not canonical** — `serde_json::to_string()` does not sort object keys. Two semantically identical objects with different insertion order hash differently. Must sort keys recursively before serializing for the hash.
+
+3. **Hash mismatch exits 2 instead of 1** — The contract (exit 0 = success, 1 = hash mismatch, 2 = other error) is broken. Mismatch currently exits 2 with no updated anchor output, so agents can't retry. Must introduce a typed error variant that distinguishes `HashMismatch` from `OtherError`, exit 1 on mismatch, and emit updated `JSONPATH:NEW_HASH` anchors to stderr.
+
+4. **Indentation wrong for nested objects/arrays** — `format_json_with_anchors` indents every level with a flat `  ` prefix from the recursive call's root, not relative to the parent. Nested content is misaligned.
+
+5. **`JsonParams` struct in a match arm** — Should live in `json.rs` or a shared module, not inside a `match` arm in `main.rs`.
+
+6. **`println!("Applied successfully.")` is inconsistent** — The existing `apply` command prints nothing on success. This stdout noise will confuse agents parsing output.
+
+### Task J-tests: Add real tests for the JSON engine
+
+**Status: DONE**
+
+The current 4 tests cover parsing setup only. No tests for `apply_json_edits` or any edit operation. The fixture files in `tests/fixtures/json/` exist but are unused.
+Add `tests/json_integration.rs` covering:
+- `set_path` on top-level, nested, and array-indexed paths
+- `insert_at_path` into object (with key) and array (without key) at correct path
+- `delete_path` on top-level and nested paths
+- Canonical hash consistency: same logical value, different insertion order → same hash
+- Hash mismatch: stale anchor returns typed error (not panic)
+- Atomicity: first edit valid, second edit stale → no mutations applied
+- Round-trip: json-read anchor for a key → use that anchor in apply → verify updated value
+- Use `tests/fixtures/json/small.json` and `medium.json` as input fixtures
+### Task J-cli-docs: Fix CLI help indentation regression
+
+**Status: DONE**
+
+In `src/cli.rs`, the `after_long_help` agent workflow section lost its leading whitespace when the JSON workflow was added — the indented block became flush-left. The `hash` subcommand `long_about` gained 8 spurious leading spaces. Fixed both.
+
+---
+
+## Session 2026-02-26 — Second Review Findings
+
+Thorough code review after the initial fixes found two critical bugs, several medium issues, and documentation drift. Prioritized below.
+
+### Task J2-1: Hook scripts don't handle json-read / json-apply (CRITICAL)
+
+**Status: TODO**
+`check_before_apply.sh` line 16 only matches `hashline apply`:
+```bash
+grep -qE '^[[:space:]]*hashline[[:space:]]+apply'
+```
+It never matches `hashline json-apply`. Same for `track_hashline.sh` lines 70–71 — only looks for `hashline read` and `hashline apply`.
+- `json-apply` without a prior `json-read` is never blocked
+- `json-read` is never recorded in the session file
+- After `json-apply`, the file is never marked stale
+`HASHLINE_HOOKS.md` lines 9, 11, 12 explicitly claim these hooks handle `json-read` and `json-apply`. That's a documentation lie until the scripts are updated.
+
+Fix: extend both regex patterns in both scripts to match `hashline json-read` / `hashline json-apply`. Update the test suite in `contrib/hooks/tests/test_hooks.sh` with synthetic JSON read/apply scenarios.
+
+### Task J2-2: Multi-edit on overlapping paths breaks atomicity (CRITICAL)
+
+**Status: TODO**
+
+`apply_json_edits` validates all anchors in pass 1 against the *original* AST, then applies all edits in pass 2 sequentially. If edit 1 deletes `$.scripts` and edit 2 sets `$.scripts.test`, the delete mutates the AST, then the set fails with "Key not found" — but the delete already happened. The AST is now in a half-mutated state. Atomicity is broken.
+
+More subtly: two `set_path` edits on the same key both validate against the original hash (both pass), then the second overwrites the first silently. The agent intended both edits to apply, but the second was never validated against the post-first-edit state.
+Options:
+- A. **Clone-on-validate**: clone the AST before pass 2, apply edits to the clone, swap on success. On any error in pass 2, the original AST is untouched. Simple, correct, slight memory cost.
+- B. **Detect overlapping paths**: reject edit batches where any path is a prefix of another. Prevents the dangerous cases but is overly restrictive.
+- C. **Sequential validate-then-apply per edit**: validate edit N against the current (possibly mutated) AST, then apply. This is correct but changes the semantics — each edit sees the result of prior edits, so anchors need to reflect post-edit state.
+Recommendation: Option A — clone before apply, swap on success. It's the same pattern the text-file engine uses (validate all, then splice). The clone cost is negligible for any JSON file an agent would edit.
+
+### Task J2-3: Formatter doesn't escape JSON keys (HIGH)
+
+**Status: TODO**
+`format_json_with_anchors_inner` line 468:
+```rust
+"{}  "{}": {}"
+```
+The key is interpolated raw. A JSON key containing `"` (e.g. `he said "hello"`) produces broken output. Fix: use `serde_json::to_string(k)` which handles escaping, instead of manual `"{}"` wrapping.
+
+### Task J2-4: Remove dead `jsonpath-rust` dependency (MEDIUM)
+
+**Status: TODO**
+
+`jsonpath-rust = "0.3"` was added to `Cargo.toml` but is never imported or used anywhere. The path parser was hand-written. Remove the dependency and clean up `Cargo.lock` (should shrink by ~154 lines).
+
+### Task J2-5: Unify error types in public API (MEDIUM)
+
+**Status: TODO**
+
+`parse_json_ast` returns `Result<Value, Box<dyn std::error::Error>>` while `apply_json_edits` returns `Result<(), JsonError>`. Two different error types for the same module. `parse_json_ast` should return `Result<Value, JsonError>` for a consistent API surface. This simplifies error handling in `main.rs` where both functions are called in sequence.
+
+### Task J2-6: Fix README curl URLs after contrib/ relocation (MEDIUM)
+
+**Status: TODO**
+Two curl URLs in `README.md` still point to `.claude/`:
+- Line 226: `https://raw.githubusercontent.com/.../main/.claude/skills/hashline-setup/SKILL.md`
+- Line 269: `bash .claude/hooks/tests/test_hooks.sh`
+Both should reference `contrib/` to match the actual file locations after the move.
+
+Also: `HASHLINE_HOOKS.md` line 31 references `.claude/skills/hashline-setup/SKILL.md` in prose (not a curl URL) — should be `contrib/skills/hashline-setup/SKILL.md`.
+
+### Task J2-7: Sync AGENTS.md with HASHLINE_TEMPLATE.md (LOW)
+
+**Status: TODO**
+`AGENTS.md` error recovery section (line ~121) only shows the text-file `>>>` format. `HASHLINE_TEMPLATE.md` was updated to include the JSON mismatch format. These two files have near-identical content but are now diverged. Either:
+- A. Make `AGENTS.md` a copy of `HASHLINE_TEMPLATE.md` (they serve the same purpose)
+- B. Add the JSON error recovery section to `AGENTS.md`
+- C. Delete one and symlink / reference the other
+### Task J2-8: Remove `large.json` fixture or add tests for it (LOW)
+
+**Status: TODO**
+`tests/fixtures/json/large.json` (960 lines) was added per the spec's plan for performance tests. No test uses it. Either:
+- A. Delete it (dead weight)
+- B. Add a benchmark or test that actually exercises it (the spec suggested parse/serialize < 100ms)
+### Task J2-9: Clean up `// (fix N)` comments in json.rs (LOW)
+
+**Status: TODO**
+
+Lines 8, 65, 76, 217, 457 in `src/json.rs` have implementation-session comments like `// Error type (fix 3)` and `// Path segment parser (fix 1)`. These are scaffolding from the fix session, not meaningful documentation. Replace with descriptive section headers or remove entirely.
+
+### Task J2-10: Cosmetic: `to_string_pretty` for primitives, whitespace-strip on compact input (LOW)
+
+**Status: TODO**
+
+1. `format_json_with_anchors_inner` line 500 uses `serde_json::to_string_pretty(value)` for primitives. `to_string` produces identical output for non-structured values and is semantically correct (the formatter controls its own layout).
+
+2. `compute_json_anchor` routes canonical JSON through `compute_line_hash(0, &canonical)` which strips whitespace. Canonical JSON is already compact (no whitespace to strip). A direct `xxh32(canonical.as_bytes(), 0) % 256` would be clearer. However, changing the hash computation would invalidate all existing anchors — so this should only be done if no real-world anchors exist yet (i.e., before any release that ships JSON support). If anchors are already in the wild, leave it alone and document the quirk.
+
