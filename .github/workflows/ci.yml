@@ -37,7 +37,7 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Hook tests
-        run: bash .claude/hooks/tests/test_hooks.sh
+        run: bash contrib/hooks/tests/test_hooks.sh
 
   bench:
     runs-on: ubuntu-latest
