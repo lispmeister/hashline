@@ -1,0 +1,17 @@
+{
+  "author": "Test Author",
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "description": "A sample project",
+  "devDependencies": {},
+  "license": "MIT",
+  "main": "index.js",
+  "name": "my-project",
+  "scripts": {
+    "build": "webpack",
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "version": "1.1.0"
+}

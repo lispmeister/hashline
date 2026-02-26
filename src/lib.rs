@@ -3,6 +3,7 @@ pub mod error;
 pub mod format;
 pub mod hash;
 pub mod heuristics;
+pub mod json;
 pub mod parse;
 
 pub use edit::{

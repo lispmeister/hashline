@@ -163,6 +163,56 @@ hashline read --start-line 130 --lines 25 src/main.rs
 hashline hash src/main.rs
 ```
 
+### JSON-aware editing
+
+For JSON files, Hashline supports semantic editing using JSONPath-based anchors:
+
+```bash
+# 1. Read JSON with anchors
+hashline json-read package.json
+
+# Output example:
+{
+  // $.name:cd
+  "name": "my-project",
+  // $.version:a7
+  "version": "1.0.0",
+  // $.dependencies:27
+  "dependencies": {
+  // $.dependencies.express:39
+  "express": "^4.17.1"
+  }
+}
+
+# 2. Apply semantic JSON edits
+hashline json-apply << 'EOF'
+{
+  "path": "package.json",
+  "edits": [
+    {"set_path": {"anchor": "$.version:a7", "value": "1.2.0"}},
+    {"set_path": {"anchor": "$.dependencies:27", "value": {"express": "^4.17.1", "lodash": "^4.17.0"}}}
+  ]
+}
+EOF
+```
+
+### JSON edit operations
+
+**`set_path`** — set a value at JSONPath:
+```json
+{"set_path": {"anchor": "$.version:a7", "value": "1.2.0"}}
+```
+
+**`insert_at_path`** — insert into object/array:
+```json
+{"insert_at_path": {"anchor": "$.dependencies:27", "key": "lodash", "value": "^4.17.0"}}
+```
+
+**`delete_path`** — remove a value:
+```json
+{"delete_path": {"anchor": "$.scripts.test:3b"}}
+```
+
 ## Agent Integration
 
 Hashline works with any AI coding agent that accepts system-prompt instructions: Claude Code, Cursor, Windsurf, and others.

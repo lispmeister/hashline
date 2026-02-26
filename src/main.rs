@@ -8,6 +8,7 @@ mod error;
 mod format;
 mod hash;
 mod heuristics;
+mod json;
 mod parse;
 
 use cli::{Cli, Commands};
@@ -192,6 +193,88 @@ fn main() {
             for (i, line) in content.split('\n').enumerate() {
                 let num = i + 1;
                 println!("{}:{}", num, hash::compute_line_hash(num, line));
+            }
+        }
+        Commands::JsonRead { file } => {
+            use std::path::Path;
+            let ast = match json::parse_json_ast(Path::new(&file)) {
+                Ok(a) => a,
+                Err(e) => {
+                    eprintln!("Error parsing JSON {}: {}", file, e);
+                    process::exit(2);
+                }
+            };
+            println!("{}", json::format_json_anchors(&ast));
+        }
+        Commands::JsonApply {
+            input,
+            emit_updated,
+        } => {
+            let input_data = if let Some(ref path) = input {
+                match std::fs::read_to_string(path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("Error reading input file {}: {}", path, e);
+                        process::exit(2);
+                    }
+                }
+            } else {
+                let mut buf = String::new();
+                if let Err(e) = std::io::stdin().read_to_string(&mut buf) {
+                    eprintln!("Error reading stdin: {}", e);
+                    process::exit(2);
+                }
+                buf
+            };
+
+            // Define a JSON params struct for now (can be moved to edit.rs later)
+            #[derive(serde::Deserialize)]
+            struct JsonParams {
+                path: String,
+                edits: Vec<json::JsonEdit>,
+            }
+
+            let params: JsonParams = match serde_json::from_str(&input_data) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Invalid JSON input: {}", e);
+                    process::exit(2);
+                }
+            };
+
+            use std::path::Path;
+            let mut ast = match json::parse_json_ast(Path::new(&params.path)) {
+                Ok(a) => a,
+                Err(e) => {
+                    eprintln!("Error parsing JSON {}: {}", params.path, e);
+                    process::exit(2);
+                }
+            };
+
+            if let Err(e) = json::apply_json_edits(&mut ast, &params.edits) {
+                eprintln!("Error: {}", e);
+                // For now, treat all errors as exit code 2; can differentiate hash mismatches later
+                process::exit(2);
+            }
+
+            // Write back the modified JSON
+            let output = match serde_json::to_string_pretty(&ast) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("Error serializing JSON: {}", e);
+                    process::exit(2);
+                }
+            };
+            if let Err(e) = std::fs::write(&params.path, output + "\n") {
+                eprintln!("Error writing {}: {}", params.path, e);
+                process::exit(2);
+            }
+
+            println!("Applied successfully.");
+            if emit_updated {
+                // Re-format with updated anchors
+                println!("---");
+                println!("{}", json::format_json_anchors(&ast));
             }
         }
     }

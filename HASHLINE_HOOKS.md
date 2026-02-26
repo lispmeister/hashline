@@ -6,19 +6,19 @@ This guide explains how to add Claude Code hooks to any project that uses hashli
 
 | Hook | Event | Effect |
 |---|---|---|
-| Block `Edit` tool | `PreToolUse/Edit` | Hard block (exit 2) — redirects to `hashline apply` |
+| Block `Edit` tool | `PreToolUse/Edit` | Hard block (exit 2) — redirects to `hashline apply` or `hashline json-apply` |
 | Block `NotebookEdit` tool | `PreToolUse/NotebookEdit` | Hard block (exit 2) |
-| Enforce read-before-apply | `PreToolUse/Bash` | Blocks `hashline apply` if the target file has not been read with `hashline read` in the current session, or if its anchors are stale after a prior apply |
-| Track session state | `PostToolUse/Bash` | After each `hashline read` or `hashline apply`, updates a per-session file that records which files have fresh anchors and which are stale |
+| Enforce read-before-apply | `PreToolUse/Bash` | Blocks `hashline apply` or `hashline json-apply` if the target file has not been read with the corresponding read command in the current session, or if its anchors are stale after a prior apply |
+| Track session state | `PostToolUse/Bash` | After each `hashline read`, `hashline json-read`, `hashline apply`, or `hashline json-apply`, updates a per-session file that records which files have fresh anchors and which are stale |
 
 The hooks enforce rules 1 and 2 below. Rules 3 and 4 are not mechanically enforceable.
 
 | Rule | Enforced? |
 |---|---|
 | Don't use the Edit tool | ✅ Hard block |
-| Read before apply; re-read after apply | ✅ Block with clear error |
+| Read before apply; re-read after apply (includes JSON read/apply) | ✅ Block with clear error |
 | Batch all edits to one file in one apply call | ❌ (advisory only) |
-| Prefer anchor ops over `replace` | ❌ (advisory only) |
+| Prefer anchor ops over `replace` (and semantic JSON ops over line-based) | ❌ (advisory only) |
 
 ## Quick install via skill
 

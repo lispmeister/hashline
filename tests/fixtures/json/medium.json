@@ -1,0 +1,116 @@
+{
+  "app": {
+    "name": "MyApp",
+    "version": "2.1.0",
+    "environment": "development",
+    "debug": true,
+    "port": 3000,
+    "host": "localhost",
+    "timeout": 5000,
+    "features": {
+      "authentication": true,
+      "logging": false,
+      "caching": true,
+      "notifications": {
+        "email": true,
+        "sms": false,
+        "push": true
+      }
+    }
+  },
+  "database": {
+    "type": "postgresql",
+    "host": "db.example.com",
+    "port": 5432,
+    "name": "myapp_db",
+    "credentials": {
+      "username": "admin",
+      "password": "secret123"
+    },
+    "pool": {
+      "min": 2,
+      "max": 10,
+      "idle": 30000
+    },
+    "ssl": true
+  },
+  "cache": {
+    "enabled": true,
+    "type": "redis",
+    "host": "cache.example.com",
+    "port": 6379,
+    "ttl": 3600
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "role": "admin",
+      "active": true,
+      "preferences": {
+        "theme": "dark",
+        "language": "en"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "email": "bob@example.com",
+      "role": "user",
+      "active": true,
+      "preferences": {
+        "theme": "light",
+        "language": "es"
+      }
+    },
+    {
+      "id": 3,
+      "name": "Charlie Brown",
+      "email": "charlie@example.com",
+      "role": "moderator",
+      "active": false,
+      "preferences": {
+        "theme": "auto",
+        "language": "fr"
+      }
+    }
+  ],
+  "api": {
+    "endpoints": [
+      {
+        "path": "/users",
+        "method": "GET",
+        "auth_required": false
+      },
+      {
+        "path": "/users/:id",
+        "method": "GET",
+        "auth_required": true
+      },
+      {
+        "path": "/users",
+        "method": "POST",
+        "auth_required": true
+      }
+    ],
+    "rate_limiting": {
+      "requests_per_minute": 60,
+      "burst_limit": 10
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "outputs": [
+      {
+        "type": "file",
+        "path": "/var/log/myapp.log"
+      },
+      {
+        "type": "console",
+        "colorize": true
+      }
+    ]
+  }
+}
