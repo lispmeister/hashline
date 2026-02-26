@@ -167,14 +167,22 @@ hashline hash src/main.rs
 
 Hashline works with any AI coding agent that accepts system-prompt instructions: Claude Code, Cursor, Windsurf, and others.
 
-**Setup (two steps):**
+### Claude Code (recommended)
+
+Use the bundled skill to install hooks that **mechanically enforce** the workflow — blocking the Edit tool and requiring a `hashline read` before every `hashline apply`:
+
+```
+/hashline-setup
+```
+
+The skill installs the hook scripts, registers them in `.claude/settings.local.json`, and runs the test suite to verify. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for what the hooks do and how to install them manually.
+
+### Other agents (Cursor, Windsurf, etc.)
 
 1. Install the `hashline` binary
-2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `CLAUDE.md`, `AGENTS.md`, or equivalent — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
+2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `AGENTS.md` or equivalent rules file — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
 
 The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
-
-**Enforce the workflow with hooks:** Claude Code users can install pre/post-tool hooks that mechanically enforce "read before apply" and block the built-in Edit tool. The fastest way is the bundled skill — type `/hashline-setup` in any project. Or follow the manual steps in [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md).
 
 ## Why Not Diffs or String Replacement?
 
