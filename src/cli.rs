@@ -12,38 +12,7 @@ applied, preventing silent corruption.\n\n\
 For JSON files, use JSONPath-based anchors (JSONPATH:VALUEHASH) for semantic editing.\n\n\
 Hash algorithm: xxHash32(whitespace_stripped_line, seed=0) % 256, formatted as 2 hex chars.\n\n\
 Exit codes: 0 = success, 1 = hash mismatch (stderr has updated anchors), 2 = other error.",
-    after_long_help = "AGENT WORKFLOW\n\
-Add the contents of HASHLINE_TEMPLATE.md to your project's CLAUDE.md,\n\
-AGENTS.md, or equivalent agent instructions file. The full workflow:\n\n\
-1. hashline read src/foo.rs\n\
-Output: LINE:HASH|content for each line. Collect anchors for lines to change.\n\n\
-2. cat << 'EOF' | hashline apply\n\
-{\"path\":\"src/foo.rs\",\"edits\":[{\"set_line\":{\"anchor\":\"4:01\",\"new_text\":\"...\"}}]}\n\
-EOF\n\
-Edits are atomic — all validate before any mutation. On hash mismatch\n\
-(exit 1), stderr shows updated LINE:HASH refs; retry with those anchors.\n\n\
-3. hashline read --start-line 3 --lines 5 src/foo.rs\n\
-Verify just the changed region without re-reading the whole file.\n\n\
-For JSON files:\n\
-1. hashline json-read package.json\n\
-Output: JSON with // $.path:hash anchors. Collect anchors for values to change.\n\n\
-2. cat << 'EOF' | hashline json-apply\n\
-{\"path\":\"package.json\",\"edits\":[{\"set_path\":{\"anchor\":\"$.version:a7\",\"value\":\"1.2.0\"}}]}\n\
-EOF\n\
-JSON edits are atomic and preserve valid JSON structure.\n\n\
-EDIT OPERATIONS (Text Files)\n\
-set_line      Replace one line:    {\"set_line\":{\"anchor\":\"4:01\",\"new_text\":\"...\"}}\n\
-replace_lines Replace a range:     {\"replace_lines\":{\"start_anchor\":\"3:7f\",\"end_anchor\":\"5:0e\",\"new_text\":\"...\"}}\n\
-insert_after  Insert after anchor: {\"insert_after\":{\"anchor\":\"2:b2\",\"text\":\"...\"}}\n\
-replace       Exact substring:     {\"replace\":{\"old_text\":\"...\",\"new_text\":\"...\"}}\n\n\
-JSON OPERATIONS\n\
-set_path      Set value at path:   {\"set_path\":{\"anchor\":\"$.version:a7\",\"value\":\"1.2.0\"}}\n\
-insert_at_path Insert at path:     {\"insert_at_path\":{\"anchor\":\"$.deps:a1\",\"key\":\"lodash\",\"value\":\"^4.17.0\"}}\n\
-delete_path   Delete value:        {\"delete_path\":{\"anchor\":\"$.scripts.test:3b\"}}\n\n\
-Use \"new_text\":\"\" in replace_lines to delete a range.\n\
-Use \\n in strings for multi-line content.\n\
-Batch multiple edits to one file in a single apply call.\n\
-replace edits run after all anchor edits and error on ambiguous matches."
+    after_long_help = include_str!("../cli_help.md"),
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -71,11 +40,11 @@ verifying edits without re-reading an entire large file.",
     Read {
         /// File path to read
         file: String,
-        /// Starting line number (1-indexed, default 1)
-        #[arg(long, default_value_t = 1, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
+        /// Starting line number (1-indexed, default 1; u32::MAX limit: practical for files, usize::MAX excessive)
+        #[arg(long, default_value_t = 1, value_parser = RangedU64ValueParser::\<usize\>::new().range(1..=(u32::MAX as u64)))]
         start_line: usize,
-        /// Maximum number of lines to output
-        #[arg(long, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
+        /// Maximum number of lines to output (u32::MAX limit: practical for files)
+        #[arg(long, value_parser = RangedU64ValueParser::\<usize\>::new().range(1..=(u32::MAX as u64)))]
         lines: Option<usize>,
     },
     /// Apply hashline edits to a file (reads JSON from stdin or --input file)

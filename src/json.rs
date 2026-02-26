@@ -1,6 +1,5 @@
-use crate::hash::compute_line_hash;
 use serde_json::Value;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::fs;
 use std::path::Path;
 
@@ -60,6 +59,14 @@ impl From<serde_json::Error> for JsonError {
         JsonError::Other(e.to_string())
     }
 }
+
+
+impl From<Box<dyn std::error::Error>> for JsonError {
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        JsonError::Other(err.to_string())
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Params struct (fix 5)
@@ -214,33 +221,84 @@ fn query_path_segments_mut<'a>(
 }
 
 // ---------------------------------------------------------------------------
-// Canonical JSON (fix 2)
-// ---------------------------------------------------------------------------
+// Canonical hash (optimized, direct xxh32, zero string allocs)
+pub fn compute_canonical_hash(value: &Value) -> String {
+    let mut buf = Vec::new();
+    hash_canonical(&mut buf, value).expect("hash_canonical failed");
+    let h = xxhash_rust::xxh32::xxh32(&buf, 0) % 256u32;
+    format!("{:02x}", h as u8)
+}
 
-/// Serialize `value` to canonical JSON with sorted object keys, recursively.
-pub fn canonical_json(value: &Value) -> String {
+fn hash_canonical<W: std::io::Write>(w: &mut W, value: &Value) -> std::io::Result<()> {
     match value {
-        Value::Object(map) => {
-            let mut keys: Vec<&String> = map.keys().collect();
-            keys.sort();
-            let pairs: Vec<String> = keys
-                .into_iter()
-                .map(|k| {
-                    format!(
-                        "{}:{}",
-                        serde_json::to_string(k).unwrap(),
-                        canonical_json(&map[k])
-                    )
-                })
-                .collect();
-            format!("{{{}}}", pairs.join(","))
+        Value::Null => w.write_all(b"null")?,
+        Value::Bool(true) => w.write_all(b"true")?,
+        Value::Bool(false) => w.write_all(b"false")?,
+        Value::Number(n) => w.write_all(n.to_string().as_bytes())?,
+        Value::String(s) => {
+            w.write_all(b"\"")?;
+            for &b in s.as_bytes() {
+                match b {
+                    b'\"' => w.write_all(b"\\\"")?,
+                    b'\\' => w.write_all(b"\\\\")?,
+                    b'\n' => w.write_all(b"\\n")?,
+                    b'\r' => w.write_all(b"\\r")?,
+                    b'\t' => w.write_all(b"\\t")?,
+                    b'\x08' => w.write_all(b"\\b")?,
+                    b'\x0c' => w.write_all(b"\\f")?,
+                    b if b < 0x20u8 => {
+                        let s = format!("\\u{:04x}", b as u32); w.write_all(s.as_bytes())?;
+                    }
+                    _ => w.write_all(&[b])?,
+                }
+            }
+            w.write_all(b"\"")?
         }
         Value::Array(arr) => {
-            let elems: Vec<String> = arr.iter().map(canonical_json).collect();
-            format!("[{}]", elems.join(","))
+            w.write_all(b"[")?;
+            let mut first = true;
+            for v in arr.iter() {
+                if !first {
+                    w.write_all(b",")?;
+                }
+                first = false;
+                hash_canonical(w, v)?;
+            }
+            w.write_all(b"]" )?
         }
-        _ => serde_json::to_string(value).unwrap_or_else(|_| "null".to_string()),
-    }
+        Value::Object(map) => {
+            w.write_all(b"{")?;
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort_unstable();
+            let mut first = true;
+            for key in keys.iter() {
+                if !first {
+                    w.write_all(b",")?;
+                }
+                first = false;
+                w.write_all(b"\"")?;
+                for &b in key.as_bytes() {
+                    match b {
+                        b'\"' => w.write_all(b"\\\"")?,
+                        b'\\' => w.write_all(b"\\\\")?,
+                        b'\n' => w.write_all(b"\\n")?,
+                        b'\r' => w.write_all(b"\\r")?,
+                        b'\t' => w.write_all(b"\\t")?,
+                        b'\x08' => w.write_all(b"\\b")?,
+                        b'\x0c' => w.write_all(b"\\f")?,
+                        b if b < 0x20u8 => {
+                            w.write_fmt(format_args!("\\u{:04x}", b as u32))?;
+                        }
+                        _ => w.write_all(&[b])?,
+                    }
+                }
+                w.write_all(b"\":")?;
+                hash_canonical(w, map.get(key).unwrap())?;
+            }
+            w.write_all(b"}")?;
+        }
+    }?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -248,23 +306,26 @@ pub fn canonical_json(value: &Value) -> String {
 // ---------------------------------------------------------------------------
 
 /// Parse a JSON file into a serde_json Value AST.
-pub fn parse_json_ast(file_path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(file_path)?;
-    let value: Value = serde_json::from_str(&content)?;
+pub fn parse_json_ast(file_path: &Path) -> Result<Value, JsonError> {
+    let content = fs::read_to_string(file_path)
+        .map_err(|e| JsonError::from(Box::new(e) as Box<dyn std::error::Error>))?;
+    let value = serde_json::from_str(&content)?;
     Ok(value)
+
 }
 
+
 /// Compute a hash anchor for a JSON value at a given path.
-/// Uses canonical JSON (sorted keys) for stable hashing.
+/// (stable canonical hash with sorted keys).
 pub fn compute_json_anchor(path: &str, value: &Value) -> String {
-    let canonical = canonical_json(value);
-    let hash = compute_line_hash(0, &canonical);
-    format!("{}:{}", path, hash)
+    format!("{}:{}", path, compute_canonical_hash(value))
 }
 
 /// Format JSON AST with inline anchor comments.
 pub fn format_json_anchors(ast: &Value) -> String {
-    format_json_with_anchors_inner(ast, "$", 0)
+    let mut buf = String::new();
+    let _ = format_json_with_anchors_inner(&mut buf, ast, "$", 0);
+    buf
 }
 
 /// JSON-specific edit operations.
@@ -309,7 +370,7 @@ pub fn apply_json_edits(ast: &mut Value, edits: &[JsonEdit]) -> Result<(), JsonE
         };
         let segments = parse_path_segments(&path)?;
         let current_value = query_path_segments(ast, &segments)?;
-        let current_hash = compute_line_hash(0, &canonical_json(current_value));
+        let current_hash = compute_canonical_hash(current_value);
         if current_hash != expected_hash {
             return Err(JsonError::HashMismatch {
                 path,
@@ -319,23 +380,29 @@ pub fn apply_json_edits(ast: &mut Value, edits: &[JsonEdit]) -> Result<(), JsonE
         }
     }
 
-    // Second pass: apply all edits
+    let mut cloned_ast = ast.clone();
+
+
+    // Apply edits to clone atomically
     for edit in edits {
         match edit {
             JsonEdit::SetPath { set_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                set_path(ast, &path, op.value.clone())?;
+                set_path(&mut cloned_ast, &path, op.value.clone())?; 
             }
             JsonEdit::InsertAtPath { insert_at_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                insert_at_path(ast, &path, op.key.as_deref(), op.index, op.value.clone())?;
+                insert_at_path(&mut cloned_ast, &path, op.key.as_deref(), op.index, op.value.clone())?; 
             }
             JsonEdit::DeletePath { delete_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                delete_path(ast, &path)?;
+                delete_path(&mut cloned_ast, &path)?; 
             }
         }
     }
+
+    *ast = cloned_ast;
+
 
     Ok(())
 }
@@ -455,50 +522,48 @@ fn delete_path(ast: &mut Value, path: &str) -> Result<(), JsonError> {
 }
 
 /// Recursive formatter with proper indentation (fix 4).
-fn format_json_with_anchors_inner(value: &Value, current_path: &str, indent: usize) -> String {
+fn format_json_with_anchors_inner<W: std::fmt::Write>(w: &mut W, value: &Value, current_path: &str, indent: usize) -> std::fmt::Result {
     let pad = "  ".repeat(indent);
     match value {
         Value::Object(map) => {
-            let mut result = "{\n".to_string();
-            for (i, (key, val)) in map.iter().enumerate() {
-                let path = format!("{}.{}", current_path, key);
-                let anchor = compute_json_anchor(&path, val);
-                result.push_str(&format!("{}  // {}\n", pad, anchor));
-                result.push_str(&format!(
-                    "{}  \"{}\": {}",
-                    pad,
-                    key,
-                    format_json_with_anchors_inner(val, &path, indent + 1)
-                ));
-                if i < map.len() - 1 {
-                    result.push(',');
+            write!(w, "{{\n")?;
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort_unstable();
+            for (i, key) in keys.iter().enumerate() {
+                let path = if current_path == "$" {
+                    format!("$.{}", key)
+                } else {
+                    format!("{}.{}", current_path, key)
+                };
+                let anchor = compute_json_anchor(&path, map.get(key.as_str()).unwrap());
+                write!(w, "{ }  // {}\n", pad, anchor)?;
+                write!(w, "{ }  {}:", pad, serde_json::to_string(key).unwrap())?;
+                format_json_with_anchors_inner(w, map.get(key.as_str()).unwrap(), &path, indent + 1)?;
+                if i < keys.len() - 1 {
+                    write!(w, ",")?;
                 }
-                result.push('\n');
+                write!(w, "\n")?;
             }
-            result.push_str(&format!("{}}}", pad));
-            result
+            write!(w, "{}}}", pad)?;
         }
         Value::Array(arr) => {
-            let mut result = "[\n".to_string();
+            write!(w, "[\n")?;
             for (i, val) in arr.iter().enumerate() {
                 let path = format!("{}[{}]", current_path, i);
                 let anchor = compute_json_anchor(&path, val);
-                result.push_str(&format!("{}  // {}\n", pad, anchor));
-                result.push_str(&format!(
-                    "{}  {}",
-                    pad,
-                    format_json_with_anchors_inner(val, &path, indent + 1)
-                ));
+                write!(w, "{ }  // {}\n", pad, anchor)?;
+                write!(w, "{ }  ", pad)?;
+                format_json_with_anchors_inner(w, val, &path, indent + 1)?;
                 if i < arr.len() - 1 {
-                    result.push(',');
+                    write!(w, ",")?;
                 }
-                result.push('\n');
+                write!(w, "\n")?;
             }
-            result.push_str(&format!("{}]", pad));
-            result
+            write!(w, "{ } ]", pad)?;
         }
-        _ => serde_json::to_string_pretty(value).unwrap_or_else(|_| "null".to_string()),
+        _ => write!(w, "{}", value)?,
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -555,10 +620,10 @@ mod tests {
     }
 
     #[test]
-    fn test_canonical_json_sorted_keys() {
-        let a: Value = serde_json::from_str(r#"{"b": 1, "a": 2}"#).unwrap();
-        let b: Value = serde_json::from_str(r#"{"a": 2, "b": 1}"#).unwrap();
-        assert_eq!(canonical_json(&a), canonical_json(&b));
+    fn test_canonical_hash_sorted_keys() {
+        let a: Value = serde_json::from_str(r##"{\"b\": 1, \"a\": 2}"##).unwrap();
+        let b: Value = serde_json::from_str(r##"{\"a\": 2, \"b\": 1}"##).unwrap();
+        assert_eq!(compute_canonical_hash(&a), compute_canonical_hash(&b));
     }
 
     #[test]

@@ -188,6 +188,38 @@ fn json_atomicity_first_ok_second_stale() {
     );
 }
 
+
+#[test]
+fn json_atomicity_delete_then_set() {
+    let ast = load_small();
+    let scripts_anchor = compute_json_anchor("$.scripts", &ast["scripts"]);
+    let test_anchor = compute_json_anchor("$.scripts.test", &ast["scripts"]["test"]);
+    let original_test = ast["scripts"]["test"].clone();
+
+    let mut ast2 = ast.clone();
+    let edits = vec![
+        JsonEdit::DeletePath {
+            delete_path: DeletePathOp {
+                anchor: scripts_anchor,
+            },
+        },
+        JsonEdit::SetPath {
+            set_path: SetPathOp {
+                anchor: test_anchor,
+                value: json!("vitest"),
+            },
+        },
+    ];
+
+    let result = apply_json_edits(&mut ast2, &edits);
+    assert!(result.is_err(), "expected Err due to delete-then-set conflict");
+
+    // Atomicity: no changes applied
+    assert!(ast2["scripts"].is_object());
+    assert_eq!(ast2["scripts"]["test"], original_test);
+}
+
+
 #[test]
 fn json_canonical_hash_key_order_independence() {
     // Build two objects with same keys/values but different insertion order.

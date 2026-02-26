@@ -129,16 +129,35 @@ EOF
 
 ## Error Recovery
 
-On hash mismatch, stderr shows the current file state with `>>>` marking changed lines:
+**Text files** — stderr shows context lines with `>>>` marking changed lines:
 
 ```
 1 line has changed since last read. Use the updated LINE:HASH references shown below (>>> marks changed lines).
+
     3:7f|fn main() {
 >>> 4:c9|    println!("changed");
     5:0e|}
 ```
 
 Copy the updated anchor (`4:c9`) into your edit and retry. Do not re-read the whole file — just update the anchor.
+
+
+**JSON files** — stderr shows the changed path with `>>>` and then the full re-anchored file:
+
+```
+1 anchor has changed since last read. Updated references (>>> marks changed values):
+
+>>> $.version:c9
+{
+  // $.name:cd
+  "name": "my-project",
+  // $.version:c9
+  "version": "1.1.0"
+}
+```
+
+Copy the updated anchor (`$.version:c9`) from the `>>>` line into your edit and retry.
+
 
 ## Rules
 
