@@ -174,7 +174,7 @@ Hashline works with any AI coding agent that accepts system-prompt instructions:
 
 The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
 
-**Enforce the workflow with hooks:** Claude Code users can install pre/post-tool hooks that mechanically enforce "read before apply" and block the built-in Edit tool. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for installation instructions and details.
+**Enforce the workflow with hooks:** Claude Code users can install pre/post-tool hooks that mechanically enforce "read before apply" and block the built-in Edit tool. The fastest way is the bundled skill — type `/hashline-setup` in any project. Or follow the manual steps in [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md).
 
 ## Why Not Diffs or String Replacement?
 

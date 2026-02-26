@@ -20,6 +20,25 @@ The hooks enforce rules 1 and 2 below. Rules 3 and 4 are not mechanically enforc
 | Batch all edits to one file in one apply call | ❌ (advisory only) |
 | Prefer anchor ops over `replace` | ❌ (advisory only) |
 
+## Quick install via skill
+
+If you use Claude Code, the fastest way to set up hashline hooks in any project is the bundled skill:
+
+```
+/hashline-setup
+```
+
+This installs the hook scripts, registers them in `.claude/settings.local.json`, and runs the test suite to verify everything works. See `.claude/skills/hashline-setup/SKILL.md` for the full instructions the skill executes.
+
+To install the skill globally (available in all your projects):
+
+```sh
+mkdir -p ~/.claude/skills/hashline-setup
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/skills/hashline-setup/SKILL.md \
+    -o ~/.claude/skills/hashline-setup/SKILL.md
+```
+
+
 ## Installation
 
 ### 1. Copy the hook scripts
