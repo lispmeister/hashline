@@ -61,7 +61,7 @@ Options:
 curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --prefix /usr/local/bin
 
 # Specific version
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --version v0.1.2
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh -s -- --version v0.1.10
 ```
 
 Pre-built binaries for macOS (Apple Silicon, Intel), Linux (x86_64, ARM64), and Windows (x86_64). Or download from [Releases](https://github.com/lispmeister/hashline/releases).
@@ -234,6 +234,9 @@ curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/s
 ```
 
 The skill installs the hook scripts, registers them in `.claude/settings.local.json`, and runs the test suite to verify. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for what the hooks do and how to install them manually.
+
+
+See also [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) for instructions for other agents.
 
 ### Other agents (Cursor, Windsurf, etc.)
 

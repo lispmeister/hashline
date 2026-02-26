@@ -13,4 +13,5 @@ pub use edit::{
 pub use error::{HashMismatch, HashlineMismatchError};
 pub use format::format_hashlines;
 pub use hash::compute_line_hash;
+pub use json::*;
 pub use parse::{parse_line_ref, LineRef};

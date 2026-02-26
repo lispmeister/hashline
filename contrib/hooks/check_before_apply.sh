@@ -13,7 +13,7 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 
 # Fast path: not a hashline apply command
-printf '%s' "$cmd" | head -1 | grep -qE '^[[:space:]]*hashline[[:space:]]+apply\b' || exit 0
+printf '%s' "$cmd" | head -1 | grep -qE '^[[:space:]]*hashline[[:space:]]+(apply|json-apply)\b' || exit 0
 
 session="/tmp/hashline_session_${PPID}"
 
@@ -59,3 +59,5 @@ fi
 printf 'BLOCKED: "%s" has not been read with `hashline read` in this session.\n' "$file" >&2
 printf 'Run:\n  hashline read %s\nbefore applying edits.\n' "$file" >&2
 exit 2
+
+rm -f /tmp/hashline_session_*

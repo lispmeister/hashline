@@ -1,7 +1,8 @@
 [package]
 name = "hashline"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
+default-run = "hashline"
 license = "MIT"
 
 [dependencies]
@@ -15,6 +16,8 @@ regex = "1"
 [dev-dependencies]
 pretty_assertions = "1"
 proptest = "1"
+tempfile = "3"
+
 
 [[bin]]
 name = "bench"

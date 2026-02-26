@@ -144,10 +144,11 @@ fn main() {
                     eprintln!("Warning: {}", w);
                 }
             }
-            if let Some(first_line) = anchor_result.first_changed_line {
-                println!("Applied successfully. First changed line: {}", first_line);
-                if emit_updated {
-                    // Re-read the written file and emit hashline-formatted output for the changed region
+
+            let had_anchor_changes = anchor_result.first_changed_line.is_some();
+            let had_replace_changes = !replace_edits.is_empty();
+            if emit_updated {
+                if let Some(first_line) = anchor_result.first_changed_line {
                     let updated = std::fs::read_to_string(&params.path).unwrap_or_default();
                     let updated = updated.replace("\r\n", "\n");
                     let updated = if updated.ends_with('\n') {
@@ -156,7 +157,6 @@ fn main() {
                         &updated
                     };
                     let all_lines: Vec<&str> = updated.split('\n').collect();
-                    // Emit a window around the changed region
                     let context = 2;
                     let start = first_line.saturating_sub(1 + context);
                     let edits_count = params.edits.len();
@@ -170,9 +170,9 @@ fn main() {
                         println!("{}", format::format_hashlines(&sliced_content, start + 1));
                     }
                 }
-            } else if !replace_edits.is_empty() {
-                println!("Applied successfully.");
-            } else {
+            }
+
+            if !had_anchor_changes && !had_replace_changes {
                 println!("No changes applied.");
             }
         }
@@ -248,19 +248,17 @@ fn main() {
                 match e {
                     json::JsonError::HashMismatch {
                         ref path,
+                        ref expected,
                         ref actual,
-                        ..
                     } => {
-                        let updated_anchor = format!("{}:{}", path, actual);
+                        eprintln!("Hash mismatch for {}.", path);
+                        eprintln!("  expected hash: {}", expected);
+                        eprintln!("  current hash:  {}", actual);
+                        eprintln!("  updated anchor: {}:{}", path, actual);
                         eprintln!(
-                            "1 anchor has changed since last read. Updated references (>>> marks changed values):\n"
+                            "Re-run `hashline json-read {}` to refresh anchors.",
+                            params.path
                         );
-                        eprintln!(">>> {}", updated_anchor);
-                        if let Ok(fresh_ast) =
-                            json::parse_json_ast(std::path::Path::new(&params.path))
-                        {
-                            eprintln!("{}", json::format_json_anchors(&fresh_ast));
-                        }
                         process::exit(1);
                     }
                     json::JsonError::Other(msg) => {

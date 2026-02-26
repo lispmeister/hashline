@@ -130,6 +130,27 @@ expect "relative path in apply JSON resolved to match absolute in session" \
 {"path": "relative_test_dummy.rs", "edits": []}
 EOF')" "$CHECK" 0
 
+reset_session
+expect "json-apply without prior read is blocked" \
+    "$(pre_input 'hashline json-apply << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.json", "edits": []}
+EOF')" "$CHECK" 2 "has not been read"
+
+reset_session
+set_session "read:/tmp/hashline_test_file.json"
+expect "json-apply after read is allowed" \
+    "$(pre_input 'hashline json-apply << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.json", "edits": []}
+EOF')" "$CHECK" 0
+
+reset_session
+set_session "stale:/tmp/hashline_test_file.json"
+expect "json-apply on stale file is blocked" \
+    "$(pre_input 'hashline json-apply << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.json", "edits": []}
+EOF')" "$CHECK" 2 "stale"
+
+
 # ── track_hashline.sh ─────────────────────────────────────────────────────────
 
 printf '\n=== track_hashline.sh ===\n\n'
@@ -145,6 +166,15 @@ assert "failed read does not mark file" "session_lacks 'read:/tmp/hashline_test_
 reset_session
 track "$(post_input "hashline read --start-line 10 --lines 20 /tmp/hashline_test_file.rs")"
 assert "partial read marks file as read" "session_has 'read:/tmp/hashline_test_file.rs'"
+
+reset_session
+track "$(post_input "hashline json-read /tmp/hashline_test_file.json")"
+assert "json-read marks file as read" "session_has 'read:/tmp/hashline_test_file.json'"
+
+reset_session
+track "$(post_input "hashline json-read /tmp/hashline_test_file.json" true)"
+assert "failed json-read does not mark file" "session_lacks 'read:/tmp/hashline_test_file.json'"
+
 
 reset_session
 track "$(post_input "cargo build")"
@@ -168,6 +198,25 @@ track "$(post_input 'hashline apply --emit-updated << '"'"'EOF'"'"'
 EOF')"
 assert "--emit-updated apply keeps file as read" "session_has 'read:/tmp/hashline_test_file.rs'"
 assert "--emit-updated apply does not mark stale" "session_lacks 'stale:/tmp/hashline_test_file.rs'"
+
+# json-apply (no --emit-updated) → read → stale
+reset_session
+set_session "read:/tmp/hashline_test_file.json"
+track "$(post_input 'hashline json-apply << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.json", "edits": []}
+EOF')"
+assert "json-apply marks file stale" "session_has 'stale:/tmp/hashline_test_file.json'"
+assert "json-apply removes prior read entry" "session_lacks 'read:/tmp/hashline_test_file.json'"
+
+# json-apply --emit-updated → stays fresh
+reset_session
+set_session "read:/tmp/hashline_test_file.json"
+track "$(post_input 'hashline json-apply --emit-updated << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.json", "edits": []}
+EOF')"
+assert "--emit-updated json-apply keeps file as read" "session_has 'read:/tmp/hashline_test_file.json'"
+assert "--emit-updated json-apply does not mark stale" "session_lacks 'stale:/tmp/hashline_test_file.json'"
+
 
 # failed apply → session unchanged
 reset_session

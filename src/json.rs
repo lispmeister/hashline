@@ -1,5 +1,5 @@
 use serde_json::Value;
-use std::fmt::{self, Write};
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -60,13 +60,11 @@ impl From<serde_json::Error> for JsonError {
     }
 }
 
-
 impl From<Box<dyn std::error::Error>> for JsonError {
     fn from(err: Box<dyn std::error::Error>) -> Self {
         JsonError::Other(err.to_string())
     }
 }
-
 
 // ---------------------------------------------------------------------------
 // Params struct (fix 5)
@@ -126,20 +124,18 @@ fn parse_path_segments(path: &str) -> Result<Vec<PathSegment>, JsonError> {
                     i += 1;
                 }
                 let idx_str = &tail[start..i];
-                let idx: usize = idx_str.parse().map_err(|_| {
-                    format!("Invalid array index '{}' in path: {}", idx_str, path)
-                })?;
+                let idx: usize = idx_str
+                    .parse()
+                    .map_err(|_| format!("Invalid array index '{}' in path: {}", idx_str, path))?;
                 if i < len && bytes[i] == b']' {
                     i += 1; // skip ']'
                 }
                 segments.push(PathSegment::Index(idx));
             }
             other => {
-                return Err(format!(
-                    "Unexpected character '{}' in path: {}",
-                    other as char, path
-                )
-                .into());
+                return Err(
+                    format!("Unexpected character '{}' in path: {}", other as char, path).into(),
+                );
             }
         }
     }
@@ -169,10 +165,7 @@ fn query_path_segments<'a>(
             }
             PathSegment::Index(idx) => {
                 let arr = current.as_array().ok_or_else(|| {
-                    JsonError::Other(format!(
-                        "Expected array at segment {} but got non-array",
-                        i
-                    ))
+                    JsonError::Other(format!("Expected array at segment {} but got non-array", i))
                 })?;
                 current = arr.get(*idx).ok_or_else(|| {
                     JsonError::Other(format!("Array index {} out of bounds", idx))
@@ -206,14 +199,11 @@ fn query_path_segments_mut<'a>(
             PathSegment::Index(idx) => {
                 let idx = *idx;
                 let arr = current.as_array_mut().ok_or_else(|| {
-                    JsonError::Other(format!(
-                        "Expected array at segment {} but got non-array",
-                        i
-                    ))
+                    JsonError::Other(format!("Expected array at segment {} but got non-array", i))
                 })?;
-                current = arr
-                    .get_mut(idx)
-                    .ok_or_else(|| JsonError::Other(format!("Array index {} out of bounds", idx)))?;
+                current = arr.get_mut(idx).ok_or_else(|| {
+                    JsonError::Other(format!("Array index {} out of bounds", idx))
+                })?;
             }
         }
     }
@@ -247,7 +237,8 @@ fn hash_canonical<W: std::io::Write>(w: &mut W, value: &Value) -> std::io::Resul
                     b'\x08' => w.write_all(b"\\b")?,
                     b'\x0c' => w.write_all(b"\\f")?,
                     b if b < 0x20u8 => {
-                        let s = format!("\\u{:04x}", b as u32); w.write_all(s.as_bytes())?;
+                        let s = format!("\\u{:04x}", b as u32);
+                        w.write_all(s.as_bytes())?;
                     }
                     _ => w.write_all(&[b])?,
                 }
@@ -264,7 +255,7 @@ fn hash_canonical<W: std::io::Write>(w: &mut W, value: &Value) -> std::io::Resul
                 first = false;
                 hash_canonical(w, v)?;
             }
-            w.write_all(b"]" )?
+            w.write_all(b"]")?
         }
         Value::Object(map) => {
             w.write_all(b"{")?;
@@ -287,17 +278,18 @@ fn hash_canonical<W: std::io::Write>(w: &mut W, value: &Value) -> std::io::Resul
                         b'\x08' => w.write_all(b"\\b")?,
                         b'\x0c' => w.write_all(b"\\f")?,
                         b if b < 0x20u8 => {
-                            w.write_fmt(format_args!("\\u{:04x}", b as u32))?;
+                            let s = format!("\\u{:04x}", b as u32);
+                            w.write_all(s.as_bytes())?;
                         }
                         _ => w.write_all(&[b])?,
                     }
                 }
                 w.write_all(b"\":")?;
-                hash_canonical(w, map.get(key).unwrap())?;
+                hash_canonical(w, map.get(key.as_str()).unwrap())?;
             }
             w.write_all(b"}")?;
         }
-    }?;
+    }
     Ok(())
 }
 
@@ -311,9 +303,7 @@ pub fn parse_json_ast(file_path: &Path) -> Result<Value, JsonError> {
         .map_err(|e| JsonError::from(Box::new(e) as Box<dyn std::error::Error>))?;
     let value = serde_json::from_str(&content)?;
     Ok(value)
-
 }
-
 
 /// Compute a hash anchor for a JSON value at a given path.
 /// (stable canonical hash with sorted keys).
@@ -382,27 +372,31 @@ pub fn apply_json_edits(ast: &mut Value, edits: &[JsonEdit]) -> Result<(), JsonE
 
     let mut cloned_ast = ast.clone();
 
-
     // Apply edits to clone atomically
     for edit in edits {
         match edit {
             JsonEdit::SetPath { set_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                set_path(&mut cloned_ast, &path, op.value.clone())?; 
+                set_path(&mut cloned_ast, &path, op.value.clone())?;
             }
             JsonEdit::InsertAtPath { insert_at_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                insert_at_path(&mut cloned_ast, &path, op.key.as_deref(), op.index, op.value.clone())?; 
+                insert_at_path(
+                    &mut cloned_ast,
+                    &path,
+                    op.key.as_deref(),
+                    op.index,
+                    op.value.clone(),
+                )?;
             }
             JsonEdit::DeletePath { delete_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                delete_path(&mut cloned_ast, &path)?; 
+                delete_path(&mut cloned_ast, &path)?;
             }
         }
     }
 
     *ast = cloned_ast;
-
 
     Ok(())
 }
@@ -415,10 +409,15 @@ fn parse_anchor(anchor: &str) -> Result<(String, String), JsonError> {
     if let Some(colon_pos) = anchor.rfind(':') {
         let path = &anchor[..colon_pos];
         let hash = &anchor[colon_pos + 1..];
-        if hash.len() == 2 && hash.chars().all(|c| c.is_ascii_hexdigit()) {
+        let len = hash.len();
+        if (1..=16).contains(&len) && hash.chars().all(|c| c.is_ascii_alphanumeric()) {
             Ok((path.to_string(), hash.to_string()))
         } else {
-            Err(format!("Invalid hash format in anchor: {}", anchor).into())
+            Err(format!(
+                "Invalid hash format in anchor (must be 1-16 alphanumeric chars): {}",
+                anchor
+            )
+            .into())
         }
     } else {
         Err(format!("Invalid anchor format, missing ':': {}", anchor).into())
@@ -521,80 +520,164 @@ fn delete_path(ast: &mut Value, path: &str) -> Result<(), JsonError> {
     Ok(())
 }
 
-/// Recursive formatter with proper indentation (fix 4).
-fn format_json_with_anchors_inner<W: std::fmt::Write>(w: &mut W, value: &Value, current_path: &str, indent: usize) -> std::fmt::Result {
-    let pad = "  ".repeat(indent);
-    match value {
-        Value::Object(map) => {
-            write!(w, "{{\n")?;
-            let mut keys: Vec<&String> = map.keys().collect();
-            keys.sort_unstable();
-            for (i, key) in keys.iter().enumerate() {
-                let path = if current_path == "$" {
-                    format!("$.{}", key)
-                } else {
-                    format!("{}.{}", current_path, key)
-                };
-                let anchor = compute_json_anchor(&path, map.get(key.as_str()).unwrap());
-                write!(w, "{ }  // {}\n", pad, anchor)?;
-                write!(w, "{ }  {}:", pad, serde_json::to_string(key).unwrap())?;
-                format_json_with_anchors_inner(w, map.get(key.as_str()).unwrap(), &path, indent + 1)?;
-                if i < keys.len() - 1 {
-                    write!(w, ",")?;
-                }
-                write!(w, "\n")?;
-            }
-            write!(w, "{}}}", pad)?;
+/// Formats a JSON value with anchor comments.
+fn format_json_with_anchors_inner<W: std::fmt::Write>(
+    w: &mut W,
+    value: &Value,
+    current_path: &str,
+    indent: usize,
+) -> std::fmt::Result {
+    fn write_indent<W: std::fmt::Write>(w: &mut W, depth: usize) -> std::fmt::Result {
+        for _ in 0..depth {
+            w.write_str("  ")?;
         }
-        Value::Array(arr) => {
-            write!(w, "[\n")?;
-            for (i, val) in arr.iter().enumerate() {
-                let path = format!("{}[{}]", current_path, i);
-                let anchor = compute_json_anchor(&path, val);
-                write!(w, "{ }  // {}\n", pad, anchor)?;
-                write!(w, "{ }  ", pad)?;
-                format_json_with_anchors_inner(w, val, &path, indent + 1)?;
-                if i < arr.len() - 1 {
-                    write!(w, ",")?;
-                }
-                write!(w, "\n")?;
-            }
-            write!(w, "{ } ]", pad)?;
-        }
-        _ => write!(w, "{}", value)?,
+        Ok(())
     }
-    Ok(())
+    fn render_value<W: std::fmt::Write>(
+        w: &mut W,
+        value: &Value,
+        current_path: &str,
+        indent: usize,
+        needs_comma: bool,
+    ) -> std::fmt::Result {
+        match value {
+            Value::Object(map) => {
+                if map.is_empty() {
+                    write_indent(w, indent)?;
+                    if needs_comma {
+                        writeln!(w, "{{}},")?;
+                    } else {
+                        writeln!(w, "{{}}")?;
+                    }
+                    return Ok(());
+                }
+
+                write_indent(w, indent)?;
+                writeln!(w, "{{")?;
+                let mut keys: Vec<&String> = map.keys().collect();
+                keys.sort_unstable();
+                for (index, key) in keys.iter().enumerate() {
+                    let child = map.get(*key).unwrap();
+                    let child_path = if current_path == "$" {
+                        format!("$.{}", key)
+                    } else {
+                        format!("{}.{}", current_path, key)
+                    };
+
+                    write_indent(w, indent + 1)?;
+                    writeln!(w, "// {}", compute_json_anchor(&child_path, child))?;
+                    write_indent(w, indent + 1)?;
+                    let key_repr = serde_json::to_string(key).map_err(|_| std::fmt::Error)?;
+                    write!(w, "{}: ", key_repr)?;
+                    let is_last = index + 1 == keys.len();
+                    match child {
+                        Value::Object(_) | Value::Array(_) => {
+                            writeln!(w)?;
+                            render_value(w, child, &child_path, indent + 1, !is_last)?;
+                        }
+                        _ => {
+                            let value_repr =
+                                serde_json::to_string(child).map_err(|_| std::fmt::Error)?;
+                            if is_last {
+                                writeln!(w, "{}", value_repr)?;
+                            } else {
+                                writeln!(w, "{},", value_repr)?;
+                            }
+                        }
+                    }
+                }
+                write_indent(w, indent)?;
+                if needs_comma {
+                    writeln!(w, "}},")?;
+                } else {
+                    writeln!(w, "}}")?;
+                }
+                Ok(())
+            }
+            Value::Array(items) => {
+                if items.is_empty() {
+                    write_indent(w, indent)?;
+                    if needs_comma {
+                        writeln!(w, "[],")?;
+                    } else {
+                        writeln!(w, "[]")?;
+                    }
+                    return Ok(());
+                }
+
+                write_indent(w, indent)?;
+                writeln!(w, "[")?;
+                for (index, item) in items.iter().enumerate() {
+                    let child_path = format!("{}[{}]", current_path, index);
+                    write_indent(w, indent + 1)?;
+                    writeln!(w, "// {}", compute_json_anchor(&child_path, item))?;
+                    let is_last = index + 1 == items.len();
+                    match item {
+                        Value::Object(_) | Value::Array(_) => {
+                            render_value(w, item, &child_path, indent + 1, !is_last)?;
+                        }
+                        _ => {
+                            write_indent(w, indent + 1)?;
+                            let value_repr =
+                                serde_json::to_string(item).map_err(|_| std::fmt::Error)?;
+                            if is_last {
+                                writeln!(w, "{}", value_repr)?;
+                            } else {
+                                writeln!(w, "{},", value_repr)?;
+                            }
+                        }
+                    }
+                }
+                write_indent(w, indent)?;
+                if needs_comma {
+                    writeln!(w, "],")?;
+                } else {
+                    writeln!(w, "]")?;
+                }
+                Ok(())
+            }
+            _ => {
+                write_indent(w, indent)?;
+                let value_repr = serde_json::to_string(value).map_err(|_| std::fmt::Error)?;
+                if needs_comma {
+                    writeln!(w, "{},", value_repr)
+                } else {
+                    writeln!(w, "{}", value_repr)
+                }
+            }
+        }
+    }
+
+    write_indent(w, indent)?;
+    writeln!(w, "// {}", compute_json_anchor(current_path, value))?;
+    render_value(w, value, current_path, indent, false)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
-    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_parse_valid_json() {
         let json = r#"{"name": "test", "value": 42}"#;
-        let temp_path = PathBuf::from("/tmp/test_valid_json_rs.json");
-        fs::write(&temp_path, json).unwrap();
+        let temp = NamedTempFile::new().unwrap();
+        fs::write(temp.path(), json).unwrap();
 
-        let ast = parse_json_ast(&temp_path).unwrap();
+        let ast = parse_json_ast(temp.path()).unwrap();
         assert_eq!(ast["name"], "test");
         assert_eq!(ast["value"], 42);
-
-        fs::remove_file(temp_path).unwrap();
     }
 
     #[test]
     fn test_parse_invalid_json() {
         let invalid_json = r#"{"name": "test", "value":}"#;
-        let temp_path = PathBuf::from("/tmp/test_invalid_json_rs.json");
-        fs::write(&temp_path, invalid_json).unwrap();
+        let temp = NamedTempFile::new().unwrap();
+        fs::write(temp.path(), invalid_json).unwrap();
 
-        let result = parse_json_ast(&temp_path);
+        let result = parse_json_ast(temp.path());
         assert!(result.is_err());
-
-        fs::remove_file(temp_path).unwrap();
     }
 
     #[test]
@@ -621,9 +704,26 @@ mod tests {
 
     #[test]
     fn test_canonical_hash_sorted_keys() {
-        let a: Value = serde_json::from_str(r##"{\"b\": 1, \"a\": 2}"##).unwrap();
-        let b: Value = serde_json::from_str(r##"{\"a\": 2, \"b\": 1}"##).unwrap();
-        assert_eq!(compute_canonical_hash(&a), compute_canonical_hash(&b));
+        let a: Value = serde_json::from_str(r#"{"b": 1, "a": 2}"#).unwrap();
+        let b: Value = serde_json::from_str(r#"{"a": 2, "b": 1}"#).unwrap();
+        let hash_a = compute_canonical_hash(&a);
+        let hash_b = compute_canonical_hash(&b);
+        assert_eq!(hash_a.len(), 2);
+        assert!(hash_a.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(hash_a, hash_b);
+    }
+
+    #[test]
+    fn test_parse_anchor_accepts_long_hash() {
+        let (path, hash) =
+            parse_anchor("$.config.value:abcdEFGH12345678").expect("anchor should parse");
+        assert_eq!(path, "$.config.value");
+        assert_eq!(hash, "abcdEFGH12345678");
+    }
+
+    #[test]
+    fn test_parse_anchor_rejects_overlong_hash() {
+        assert!(parse_anchor("$.config.value:12345678901234567").is_err());
     }
 
     #[test]
@@ -650,10 +750,7 @@ mod tests {
         let segs = parse_path_segments("$.arr[0]").unwrap();
         assert_eq!(
             segs,
-            vec![
-                PathSegment::Key("arr".to_string()),
-                PathSegment::Index(0),
-            ]
+            vec![PathSegment::Key("arr".to_string()), PathSegment::Index(0),]
         );
     }
 

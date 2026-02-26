@@ -17,9 +17,9 @@ session="/tmp/hashline_session_${PPID}"
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 extract_read_file() {
-    # File is the last non-flag, non-numeric argument after 'hashline read'
+    # File is the last non-flag, non-numeric argument after 'hashline read' or 'hashline json-read'
     printf '%s' "$cmd" \
-        | sed -E 's/.*hashline[[:space:]]+read[[:space:]]*//' \
+        | sed -E 's/.*hashline[[:space:]]+(json-)?read[[:space:]]*//' \
         | tr ' \t' '\n' \
         | grep -Ev '^-|^[0-9]+$|^$' \
         | tail -1
@@ -67,8 +67,8 @@ mark_stale() {
 
 is_read=false
 is_apply=false
-printf '%s' "$cmd" | head -1 | grep -qE '^[[:space:]]*hashline[[:space:]]+read\b'  && is_read=true  || true
-printf '%s' "$cmd" | head -1 | grep -qE '^[[:space:]]*hashline[[:space:]]+apply\b' && is_apply=true || true
+printf '%s' "$cmd" | head -1 | grep -qE '^[[:space:]]*hashline[[:space:]]+(read|json-read)\b'  && is_read=true  || true
+printf '%s' "$cmd" | head -1 | grep -qE '^[[:space:]]*hashline[[:space:]]+(apply|json-apply)\b' && is_apply=true || true
 
 if $is_read && [ "$is_error" = "false" ]; then
     file=$(extract_read_file)
@@ -88,3 +88,5 @@ elif $is_apply && [ "$is_error" = "false" ]; then
 fi
 
 exit 0
+
+rm -f /tmp/hashline_session_*

@@ -24,7 +24,10 @@ fn json_read_small_has_anchors() {
 
     assert!(output.contains("// $.version:"), "missing $.version anchor");
     assert!(output.contains("// $.name:"), "missing $.name anchor");
-    assert!(output.contains("// $.scripts.build:"), "missing $.scripts.build anchor");
+    assert!(
+        output.contains("// $.scripts.build:"),
+        "missing $.scripts.build anchor"
+    );
     assert!(output.contains("\"1.1.0\""), "missing actual version value");
 }
 
@@ -98,7 +101,11 @@ fn json_delete_nested_key() {
         }],
     );
 
-    assert!(result.is_ok(), "delete_path nested failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "delete_path nested failed: {:?}",
+        result.err()
+    );
     assert!(
         ast["scripts"].get("start").is_none(),
         "scripts.start should be removed"
@@ -188,7 +195,6 @@ fn json_atomicity_first_ok_second_stale() {
     );
 }
 
-
 #[test]
 fn json_atomicity_delete_then_set() {
     let ast = load_small();
@@ -212,13 +218,15 @@ fn json_atomicity_delete_then_set() {
     ];
 
     let result = apply_json_edits(&mut ast2, &edits);
-    assert!(result.is_err(), "expected Err due to delete-then-set conflict");
+    assert!(
+        result.is_err(),
+        "expected Err due to delete-then-set conflict"
+    );
 
     // Atomicity: no changes applied
     assert!(ast2["scripts"].is_object());
     assert_eq!(ast2["scripts"]["test"], original_test);
 }
-
 
 #[test]
 fn json_canonical_hash_key_order_independence() {
@@ -242,8 +250,10 @@ fn json_canonical_hash_key_order_independence() {
 #[test]
 fn json_set_deeply_nested() {
     let ast = load_medium();
-    let anchor =
-        compute_json_anchor("$.database.credentials.username", &ast["database"]["credentials"]["username"]);
+    let anchor = compute_json_anchor(
+        "$.database.credentials.username",
+        &ast["database"]["credentials"]["username"],
+    );
     let mut ast = ast;
 
     let result = apply_json_edits(
@@ -256,7 +266,11 @@ fn json_set_deeply_nested() {
         }],
     );
 
-    assert!(result.is_ok(), "deeply nested set_path failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "deeply nested set_path failed: {:?}",
+        result.err()
+    );
     assert_eq!(ast["database"]["credentials"]["username"], "superuser");
 }
 
@@ -290,6 +304,48 @@ fn json_round_trip_read_then_apply() {
         }],
     );
 
-    assert!(result.is_ok(), "round-trip apply failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "round-trip apply failed: {:?}",
+        result.err()
+    );
     assert_eq!(ast["app"]["version"], "3.0.0");
+}
+
+#[test]
+fn json_insert_array_index() {
+    let ast = load_medium();
+    let anchor = compute_json_anchor("$.users", &ast["users"]);
+    let mut ast = ast;
+
+    let result = apply_json_edits(
+        &mut ast,
+        &[JsonEdit::InsertAtPath {
+            insert_at_path: InsertAtPathOp {
+                anchor,
+                key: None,
+                index: Some(1),
+                value: json!({
+                    "id": 99,
+                    "name": "Eve",
+                    "email": "eve@example.com",
+                    "role": "admin",
+                    "active": true
+                }),
+            },
+        }],
+    );
+
+    assert!(
+        result.is_ok(),
+        "insert_at_path array index failed: {:?}",
+        result.err()
+    );
+
+    let users = ast["users"].as_array().unwrap();
+    assert_eq!(users.len(), 4);
+    assert_eq!(users[1]["name"], "Eve");
+    assert_eq!(users[2]["name"], "Bob Smith");
+    assert_eq!(users[0]["name"], "Alice Johnson");
+    assert_eq!(users[3]["name"], "Charlie Brown");
 }

@@ -41,10 +41,10 @@ verifying edits without re-reading an entire large file.",
         /// File path to read
         file: String,
         /// Starting line number (1-indexed, default 1; u32::MAX limit: practical for files, usize::MAX excessive)
-        #[arg(long, default_value_t = 1, value_parser = RangedU64ValueParser::\<usize\>::new().range(1..=(u32::MAX as u64)))]
+        #[arg(long, default_value_t = 1, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
         start_line: usize,
         /// Maximum number of lines to output (u32::MAX limit: practical for files)
-        #[arg(long, value_parser = RangedU64ValueParser::\<usize\>::new().range(1..=(u32::MAX as u64)))]
+        #[arg(long, value_parser = RangedU64ValueParser::<usize>::new().range(1..=(u32::MAX as u64)))]
         lines: Option<usize>,
     },
     /// Apply hashline edits to a file (reads JSON from stdin or --input file)
@@ -107,9 +107,7 @@ Exit codes:\n\
         long_about = "Read a JSON file and output with JSONPath-based anchors.\n\n\
 Each value gets a comment with its JSONPATH:HASH anchor before it. \
 Use this to collect anchors for JSON-aware edits.",
-        after_long_help = "EXAMPLES\n\
-    Read a JSON file with anchors:\n\
-        hashline json-read package.json"
+        after_long_help = "EXAMPLES\n\n    Basic:\n        hashline json-read package.json\n\n    Output example with array indices:\n        {\n          // $.items[0]:ab\n          \"foo\",\n          // $.items[1]:cd\n          \"bar\"\n        }"
     )]
     JsonRead {
         /// JSON file path to read
