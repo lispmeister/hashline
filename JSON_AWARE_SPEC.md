@@ -1,8 +1,11 @@
 # JSON-Aware Hashline Feature Specification
 
+> **Status**: Implemented. This document reflects the shipped implementation.
+> The original planning tasks (J1–J7) are retained at the bottom for history.
+
 ## Overview
 
-This feature extends Hashline to support JSON-specific editing operations, leveraging JSON structure and JSONPath-based anchors instead of line-based anchors. This provides semantic editing capabilities for JSON files while maintaining Hashline's core principles: atomicity, hash-based staleness detection, and heuristic recovery.
+This feature extends Hashline to support JSON-specific editing operations, leveraging JSON structure and JSONPath-based anchors instead of line-based anchors. This provides semantic editing capabilities for JSON files while maintaining Hashline's core principles: atomicity, hash-based staleness detection, and correct exit codes.
 
 ## Core Concept
 
@@ -16,55 +19,56 @@ Instead of line-based `LINE:HASH` anchors, use `JSONPATH:VALUEHASH` anchors wher
   - Root object: `$:a3`
   - Nested key: `$.config.database.host:5b`
   - Array element: `$.users[2]:9f`
-  - Array append: `$.users[]:new` (for insertions)
+
+## Supported JSONPath Syntax
+
+The implementation supports a subset of JSONPath sufficient for real-world JSON editing:
+
+| Syntax | Example | Meaning |
+|--------|---------|---------|
+| `$` | `$` | Root value |
+| `$.key` | `$.version` | Top-level object key |
+| `$.a.b.c` | `$.database.host` | Nested object keys (arbitrary depth) |
+| `$.arr[N]` | `$.users[0]` | Array element by index |
+| Mixed | `$.users[0].name` | Object and array segments combined |
+
+Keys containing `.` or `[` are not supported (the path would be ambiguous).
 
 ## Edit Operations
 
-1. `set_path` - Set a value at a JSONPath
+1. **`set_path`** — Set a value at a JSONPath
    ```json
    {"set_path": {"anchor": "$.version:5a", "value": "1.2.3"}}
    ```
 
-2. `insert_at_path` - Insert into array/object
+2. **`insert_at_path`** — Insert into array or object
    ```json
    {"insert_at_path": {"anchor": "$.dependencies:a1", "key": "lodash", "value": "^4.17.0"}}
    ```
-   - For arrays: omit "key", insert at index or append
-   - For objects: provide "key"
+   - For objects: provide `"key"`. The anchor points to the object being modified.
+   - For arrays, omit `"key"`:
+     - Omit `"index"` to append: `{"anchor": "$.tags:3b", "value": "new-tag"}`
+     - Provide `"index"` to insert before that position: `{"anchor": "$.tags:3b", "index": 0, "value": "first-tag"}`
 
-3. `delete_path` - Remove from path
+3. **`delete_path`** — Remove value at path
    ```json
    {"delete_path": {"anchor": "$.scripts.test:3b"}}
-   ```
-
-4. `replace` - Fallback exact string replacement (same as current Hashline)
-   ```json
-   {"replace": {"old_string": "\"version\": \"1.0.0\"", "new_string": "\"version\": \"1.2.3\""}}
    ```
 
 ## Atomicity and Safety
 
 - Parse JSON once into AST at start
-- Validate all anchors against current values
-- Apply all edits atomically to AST (all succeed or none apply)
+- Validate all anchors against current values (fail fast on first mismatch)
+- Apply all edits in order only if all anchors validated
 - Serialize back to JSON once at end
-- Hash mismatches prevent stale edits, showing updated `JSONPATH:NEW_HASH` anchors
-
-## Heuristic Recovery (JSON-Adapted)
-
-- Strip accidental JSONPath prefixes from model output
-- Normalize Unicode hyphens/em-dashes in string values
-- Detect value merges (model combines adjacent values)
-- Undo pure formatting rewraps in JSON strings
-- Normalize confusable Unicode in keys/values
-- Strip boundary echo (model echoes surrounding structure)
+- Hash mismatches prevent stale edits
 
 ## CLI Interface
 
-- `hashline json-read <file>` - Output JSON with path-based anchors
-  - Format: JSON with inline comments showing anchors
+- `hashline json-read <file>` — Output JSON with path-based anchors
+  - Format: JSONC (JSON with `// comment` anchors) for human and model readability
   - Example output:
-    ```json
+    ```
     {
       // $.name:8f
       "name": "my-project",
@@ -72,95 +76,51 @@ Instead of line-based `LINE:HASH` anchors, use `JSONPATH:VALUEHASH` anchors wher
       "version": "1.0.0"
     }
     ```
+  - Note: output is not valid strict JSON (uses `//` comments). Parse with a JSONC-aware tool if needed.
 
-- `hashline json-apply [--input file.json] [--emit-updated]` - Apply edits
-  - Accepts JSON payload with array of edits
-  - `--input`: Read edits from file (avoids shell guard issues)
-  - `--emit-updated`: Output fresh anchors after successful apply
-  - Exit codes: 0 success, 1 hash mismatch, 2 error
+- `hashline json-apply [--input file] [--emit-updated]` — Apply edits
+  - Reads JSON payload from stdin or `--input` file
+  - `--emit-updated`: output fresh anchors after successful apply (avoids a separate re-read)
+  - Exit codes: 0 success, 1 hash mismatch, 2 other error
 
 ## Error Handling
 
-On hash mismatch (exit code 1), stderr shows current JSON state with `>>>` marking changed values:
+On hash mismatch (exit code 1), stderr shows the changed path with `>>>` and then the full re-anchored file so the agent can get fresh anchors:
 
 ```
-1 value has changed since last read. Use the updated JSONPATH:HASH references shown below (>>> marks changed values).
+1 anchor has changed since last read. Updated references (>>> marks changed values):
 
-    $.version:5a| "1.0.0"
->>> $.version:c9| "1.1.0"
+>>> $.version:c9
+{
+  // $.name:8f
+  "name": "my-project",
+  // $.version:c9
+  "version": "1.1.0"
+}
 ```
 
-## Independent Implementation Tasks
+Copy the updated anchor (`$.version:c9`) into your edit and retry.
 
-1. **Task J1: JSON Parsing & AST Setup**
-   - Add `serde_json` dependency
-   - Implement `parse_json_ast(file_path) -> Result<Value>`
-   - Add JSONPath library (`jsonpath-rust`) for path resolution
-   - Unit tests: Parse valid/invalid JSON files
+## Known Limitations
 
-2. **Task J2: JSON Anchor Computation**
-   - Implement `compute_json_anchor(path: &str, value: &Value) -> String`
-   - Hash on canonical JSON (sorted keys, compact)
-   - Unit tests: Hash consistency, uniqueness
-
-3. **Task J3: JSON Formatting for Read**
-   - `format_json_anchors(ast: &Value) -> String`
-   - Output JSON with inline `// $.path:hash` comments
-   - Preserve readability
-   - Integration tests: Round-trip preservation
-
-4. **Task J4: JSON Edit Operations Engine**
-   - Implement `apply_json_edits(ast: &mut Value, edits: &[JsonEdit]) -> Result<()>`
-   - Validate anchors, apply operations atomically
-   - Unit tests: Each operation on sample ASTs
-
-5. **Task J5: Hash Mismatch Detection & Recovery**
-   - Check value hashes before edits
-   - Error reporting with updated anchors
-   - Implement recovery heuristics
-   - Integration tests: Stale edit scenarios
-
-6. **Task J6: CLI Subcommands Implementation**
-   - Add `json-read` and `json-apply` subcommands
-   - Support flags and error handling
-   - Manual tests: CLI integration
-
-7. **Task J7: Documentation & Examples**
-   - Update README and CLAUDE.md
-   - Create example payloads
-
-## Test Case Specifications
-
-Test fixtures in `tests/fixtures/json/`:
-
-### Small JSON (~10 lines, package.json-like)
-- Structure: Simple object with strings, arrays, nested objects
-- Test operations: set_path (version), insert_at_path (add dependency), delete_path (remove script)
-- Edge cases: Empty objects, null values, array operations
-- File: `small.json`
-
-### Medium JSON (~100 lines, config file)
-- Structure: Deeper nesting, arrays of objects, mixed types
-- Test operations: Insert into array, update nested value, delete key
-- Edge cases: Unicode strings, large numbers, boolean toggles
-- File: `medium.json`
-
-### Large JSON (~1000+ lines, data export)
-- Structure: Complex API response (users, posts, comments)
-- Test operations: Batch multiple edits, deep path updates
-- Edge cases: Very deep nesting, large arrays
-- Performance requirement: Parse/serialize < 100ms
-- File: `large.json`
-
-For each fixture:
-- Original file
-- Expected outputs after specific edits
-- Invalid JSON for error testing
-- Stale edit scenarios
+- **No heuristic recovery**: The JSON engine does not implement the heuristic recovery layer (merge detection, Unicode normalization, etc.) present in the text-file engine. If an anchor is stale the agent must re-read and retry.
+- **Keys with `.` or `[`**: JSON keys containing these characters cannot be addressed — the path encoding is ambiguous.
+- **Fail-fast validation**: Only the first mismatched anchor is reported per apply call.
 
 ## Integration with Existing Hashline
 
 - JSON-aware commands coexist with existing `read`/`apply`
-- Models can choose based on file type
-- Fallback to line-based editing for non-JSON files
-- Shared infrastructure: hashing algorithm, atomicity, error reporting
+- Models choose based on file type; line-based editing still works on JSON files as a fallback
+- Shared infrastructure: hashing algorithm (`xxHash32 % 256`), atomicity model, exit code convention
+
+---
+
+## Original Planning Tasks (history)
+
+1. **Task J1: JSON Parsing & AST Setup** — ✅ Done (`parse_json_ast`, `serde_json` dep)
+2. **Task J2: JSON Anchor Computation** — ✅ Done (`compute_json_anchor` with sorted-key canonical JSON)
+3. **Task J3: JSON Formatting for Read** — ✅ Done (`format_json_anchors` with JSONC comments, proper indentation)
+4. **Task J4: JSON Edit Operations Engine** — ✅ Done (`apply_json_edits`, real JSONPath traversal, `set_path`/`insert_at_path`/`delete_path`)
+5. **Task J5: Hash Mismatch Detection** — ✅ Done (`JsonError::HashMismatch`, exit 1, updated anchor output)
+6. **Task J6: CLI Subcommands** — ✅ Done (`json-read`, `json-apply`, `--input`, `--emit-updated`)
+7. **Task J7: Documentation** — ✅ Done (`HASHLINE_TEMPLATE.md`, `HASHLINE_HOOKS.md`, this spec)

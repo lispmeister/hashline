@@ -120,6 +120,7 @@ fn json_insert_into_object() {
             insert_at_path: InsertAtPathOp {
                 anchor,
                 key: Some("lodash".to_string()),
+                index: None,
                 value: json!("^4.17.0"),
             },
         }],

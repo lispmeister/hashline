@@ -66,24 +66,10 @@ impl From<serde_json::Error> for JsonError {
 // ---------------------------------------------------------------------------
 
 /// Parameters for `json-apply`: file path and list of edits.
+#[derive(serde::Deserialize)]
 pub struct JsonApplyParams {
     pub path: String,
     pub edits: Vec<JsonEdit>,
-}
-
-impl<'de> serde::Deserialize<'de> for JsonApplyParams {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        #[derive(serde::Deserialize)]
-        struct Inner {
-            path: String,
-            edits: Vec<JsonEdit>,
-        }
-        let inner = Inner::deserialize(d)?;
-        Ok(JsonApplyParams {
-            path: inner.path,
-            edits: inner.edits,
-        })
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +285,10 @@ pub struct SetPathOp {
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct InsertAtPathOp {
     pub anchor: String,
+    /// Object insertion: key name. Omit for array operations.
     pub key: Option<String>,
+    /// Array insertion: 0-based index. Omit to append. Ignored when `key` is set.
+    pub index: Option<usize>,
     pub value: Value,
 }
 
@@ -339,7 +328,7 @@ pub fn apply_json_edits(ast: &mut Value, edits: &[JsonEdit]) -> Result<(), JsonE
             }
             JsonEdit::InsertAtPath { insert_at_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
-                insert_at_path(ast, &path, op.key.as_deref(), op.value.clone())?;
+                insert_at_path(ast, &path, op.key.as_deref(), op.index, op.value.clone())?;
             }
             JsonEdit::DeletePath { delete_path: op } => {
                 let (path, _) = parse_anchor(&op.anchor)?;
@@ -405,6 +394,7 @@ fn insert_at_path(
     ast: &mut Value,
     path: &str,
     key: Option<&str>,
+    index: Option<usize>,
     value: Value,
 ) -> Result<(), JsonError> {
     let segments = parse_path_segments(path)?;
@@ -415,10 +405,20 @@ fn insert_at_path(
             .ok_or_else(|| JsonError::Other("Cannot insert key into non-object".to_string()))?
             .insert(key.to_string(), value);
     } else {
-        target
+        let arr = target
             .as_array_mut()
-            .ok_or_else(|| JsonError::Other("Cannot append to non-array".to_string()))?
-            .push(value);
+            .ok_or_else(|| JsonError::Other("Cannot insert into non-array".to_string()))?;
+        match index {
+            Some(idx) if idx <= arr.len() => arr.insert(idx, value),
+            Some(idx) => {
+                return Err(JsonError::Other(format!(
+                    "Array insert index {} out of bounds (len {})",
+                    idx,
+                    arr.len()
+                )))
+            }
+            None => arr.push(value),
+        }
     }
     Ok(())
 }
@@ -622,7 +622,7 @@ mod tests {
     #[test]
     fn test_insert_at_path_nested() {
         let mut ast = serde_json::json!({"a": {"b": 1}});
-        insert_at_path(&mut ast, "$.a", Some("c"), serde_json::json!(3)).unwrap();
+        insert_at_path(&mut ast, "$.a", Some("c"), None, serde_json::json!(3)).unwrap();
         assert_eq!(ast["a"]["c"], 3);
     }
 

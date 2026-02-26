@@ -34,7 +34,7 @@ To install the skill globally (available in all your projects):
 
 ```sh
 mkdir -p ~/.claude/skills/hashline-setup
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/skills/hashline-setup/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/skills/hashline-setup/SKILL.md \
     -o ~/.claude/skills/hashline-setup/SKILL.md
 ```
 
@@ -45,14 +45,14 @@ curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/s
 
 ```sh
 mkdir -p .claude/hooks
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/hooks/track_hashline.sh \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/track_hashline.sh \
     -o .claude/hooks/track_hashline.sh
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/hooks/check_before_apply.sh \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/check_before_apply.sh \
     -o .claude/hooks/check_before_apply.sh
 chmod +x .claude/hooks/track_hashline.sh .claude/hooks/check_before_apply.sh
 ```
 
-Or copy them manually from this repo's `.claude/hooks/` directory.
+Or copy them manually from this repo's `contrib/hooks/` directory.
 
 ### 2. Add the hook registrations to `.claude/settings.json`
 
@@ -153,10 +153,10 @@ The two Bash hook scripts share a session file at `/tmp/hashline_session_<PPID>`
 
 ## Testing the hooks
 
-A test suite is included at `.claude/hooks/tests/test_hooks.sh`. Run it from the project root:
+A test suite is included at `contrib/hooks/tests/test_hooks.sh`. Run it from the project root:
 
 ```sh
-bash .claude/hooks/tests/test_hooks.sh
+bash contrib/hooks/tests/test_hooks.sh
 ```
 
 The tests feed synthetic PreToolUse/PostToolUse JSON to the scripts and verify exit codes and session state. No external test framework is required.
