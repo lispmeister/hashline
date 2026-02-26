@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.1.8] - 2026-02-26
+
+### Added
+- Claude Code hooks: `check_before_apply.sh` (PreToolUse) blocks `hashline apply` if the target file has not been read or its anchors are stale; `track_hashline.sh` (PostToolUse) tracks per-session read/stale state keyed on `$PPID`
+- Hook test suite: `.claude/hooks/tests/test_hooks.sh` — 22 bash tests covering all state transitions, path normalization, `--input`, `--emit-updated`, and regression cases for heredoc false positives
+- CI step: hook tests run as part of every build (`bash .claude/hooks/tests/test_hooks.sh`)
+- `HASHLINE_HOOKS.md`: installation guide and template for adding hashline hooks to any Claude Code project
+
+### Changed
+
+- `CLAUDE.md`: removed rules now mechanically enforced by hooks (Edit tool block, read-before-apply, never-guess-hash); kept command reference, operations, exit codes, and error recovery
+
 ## [0.1.7] - 2026-02-24
 
 ### Added
