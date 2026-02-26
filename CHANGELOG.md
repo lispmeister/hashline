@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.1.9] - 2026-02-26
+
+### Added
+
+- `hashline-setup` Claude Code skill: one-command bootstrapper that installs hook scripts, merges `settings.local.json`, and runs the test suite in any project
+
+### Changed
+
+- `README.md`: Agent Integration section rewritten — Claude Code path leads with `/hashline-setup` (hooks); CLAUDE.md template demoted to fallback for non-Claude-Code agents; skill installation instructions added
+- `HASHLINE_HOOKS.md`: Quick install section added showing `/hashline-setup` and global skill install command
+
 ## [0.1.8] - 2026-02-26
 
 ### Added
