@@ -169,7 +169,15 @@ Hashline works with any AI coding agent that accepts system-prompt instructions:
 
 ### Claude Code (recommended)
 
-Use the bundled skill to install hooks that **mechanically enforce** the workflow — blocking the Edit tool and requiring a `hashline read` before every `hashline apply`:
+**1. Install the skill** (one-time, global — available in all your projects):
+
+```sh
+mkdir -p ~/.claude/skills/hashline-setup
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/skills/hashline-setup/SKILL.md \
+    -o ~/.claude/skills/hashline-setup/SKILL.md
+```
+
+**2. Run it in any project:**
 
 ```
 /hashline-setup
