@@ -269,3 +269,69 @@ Claude Code's permission allowlist matches on the first token of a Bash command.
 - Fix issue #1 (blank line insertion) — allow empty text or add operation
 - Consider issue #3 (`--emit-updated`) to reduce round-trips
 - Need usage data from at least one more project to validate generality
+
+
+---
+
+## Session 2026-02-26 — Hooks, Skill, and jq Integration
+
+### Task H1: Prune CLAUDE.md
+Remove the edit-workflow instructions from CLAUDE.md that are now mechanically enforced by hooks. Keep only what hooks cannot enforce (command reference, exit codes, error recovery). Goal: shrink prompt footprint without losing essential guidance.
+
+### Task H2: Hooks testing
+Design a test strategy for the four hooks in settings.local.json:
+- PreToolUse/Edit — hard block
+- PreToolUse/NotebookEdit — hard block
+- PreToolUse/Bash → check_before_apply.sh — blocks apply without prior read
+- PostToolUse/Bash → track_hashline.sh — tracks reads/applies/staleness
+
+Options to evaluate:
+1. Manual smoke tests: intentionally trigger each hook, verify exit code and stderr message
+2. Shell-level unit tests for the two scripts (feed synthetic JSON via stdin, assert exit codes)
+3. BATS (Bash Automated Testing System) test suite in .claude/hooks/tests/
+
+Bugs discovered during first use: (a) path normalization — absolute vs relative paths
+produced different session-file keys; fixed by resolve_path(). (b) regex false positive —
+hashline.*read matched permission strings inside Python heredocs; fixed with head -1 and
+anchored ^\s*hashline\s+read.
+
+### Task H3: Hooks template / onboarding guide
+Create reusable copy-paste instructions so users can add hashline hooks to their own projects:
+- HASHLINE_HOOKS.md (or section in README) explaining the hook architecture
+- Template settings.json / settings.local.json snippet with the four hook registrations
+- Notes on PPID-based session tracking and its limitations (PID reuse, worktrees)
+- Notes on what hooks cannot enforce (batching all edits into one apply call)
+- Notes on the two known edge cases and their fixes (path normalization, regex anchoring)
+
+### Task H4: Claude Code skill evaluation
+Evaluate whether hashline should be packaged as a Claude Code skill alongside hooks:
+- Hooks are runtime enforcement (always-on, per-project)
+- A skill is a reusable prompt expansion invoked on-demand
+- Proposed complementary model: skill = one-shot bootstrapper (installs CLAUDE.md section,
+  adds permissions, copies hook scripts, registers hooks in settings.local.json);
+  hooks = ongoing enforcement after setup
+- Open question: what is the natural trigger phrase / invocation context for the skill?
+
+### Task H5: jq-assisted JSON editing
+Investigate using jq to reduce friction when JSON files are the edit target:
+- Root problem: JSON files are valid hashline targets but editing them creates triple-layer
+  escaping (JSON content inside JSON new_text inside shell heredoc). The --input flag
+  already solves the heredoc layer; the remaining friction is constructing the payload.
+- Proposal A: document a jq-based helper for generating hashline apply payloads for JSON files
+- Proposal B: a hashline apply-json sub-command that accepts jq-path edits instead of line
+  anchors (e.g. {"jq_set": {"path": ".hooks.PreToolUse", "value": [...]}})
+- Trade-offs: jq is a soft dependency; anchor-based ops work fine on JSON if the model
+  reads first; the bigger win is tooling/templates that generate payloads programmatically
+
+### Task H6: Track hashline usage across Claude Code projects
+Instrument hashline usage tracking across all Claude Code projects to gather real-world
+statistics on tool adoption, operation frequency, error rates, and failure modes.
+- What to track: operation counts (read, apply, hash), operation types (set_line,
+  replace_lines, insert_after, replace), error rates (hash mismatch, bad JSON, file not
+  found), recovery success rate, --emit-updated vs re-read ratio, --input vs heredoc ratio
+- Where to store: append-only log file per project or global (~/.claude/hashline_usage.log)
+- How to collect: lightweight wrapper or hook that logs each hashline invocation
+- Goal: data-driven prioritization of improvements (e.g. if replace is used 40% of the
+  time, invest in making it more robust; if hash mismatches are rare, deprioritize
+  heuristic recovery)
+- Deferred: implementation TBD in a future session

@@ -174,6 +174,8 @@ Hashline works with any AI coding agent that accepts system-prompt instructions:
 
 The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
 
+**Enforce the workflow with hooks:** Claude Code users can install pre/post-tool hooks that mechanically enforce "read before apply" and block the built-in Edit tool. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for installation instructions and details.
+
 ## Why Not Diffs or String Replacement?
 
 | Approach | Failure mode |
@@ -188,7 +190,7 @@ The key insight from Can Bölük's original research: models don't fail because 
 ## Testing
 
 ```sh
-# Run all tests (unit + integration + fuzz + comparison fixtures) — 145 tests total
+# Run all tests (unit + integration + fuzz + comparison fixtures) - 145 tests total
 cargo test
 
 # Run only the LLM comparison fixtures (hashline vs raw search-replace)
@@ -196,6 +198,9 @@ cargo test --test comparison -- --nocapture
 
 # Run performance benchmarks (100 / 1K / 10K line files)
 cargo run --release --bin bench
+
+# Run Claude Code hook tests (bash, requires jq)
+bash .claude/hooks/tests/test_hooks.sh
 ```
 
 The comparison suite applies each of 10 fixture scenarios two ways — hashline anchors vs naive string replacement — and prints a pass/fail table showing where hashline succeeds and raw mode fails.
