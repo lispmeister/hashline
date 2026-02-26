@@ -227,14 +227,7 @@ fn main() {
                 buf
             };
 
-            // Define a JSON params struct for now (can be moved to edit.rs later)
-            #[derive(serde::Deserialize)]
-            struct JsonParams {
-                path: String,
-                edits: Vec<json::JsonEdit>,
-            }
-
-            let params: JsonParams = match serde_json::from_str(&input_data) {
+            let params: json::JsonApplyParams = match serde_json::from_str(&input_data) {
                 Ok(p) => p,
                 Err(e) => {
                     eprintln!("Invalid JSON input: {}", e);
@@ -252,9 +245,29 @@ fn main() {
             };
 
             if let Err(e) = json::apply_json_edits(&mut ast, &params.edits) {
-                eprintln!("Error: {}", e);
-                // For now, treat all errors as exit code 2; can differentiate hash mismatches later
-                process::exit(2);
+                match e {
+                    json::JsonError::HashMismatch {
+                        ref path,
+                        ref actual,
+                        ..
+                    } => {
+                        let updated_anchor = format!("{}:{}", path, actual);
+                        eprintln!(
+                            "1 anchor has changed since last read. Updated references (>>> marks changed values):\n"
+                        );
+                        eprintln!(">>> {}", updated_anchor);
+                        if let Ok(fresh_ast) =
+                            json::parse_json_ast(std::path::Path::new(&params.path))
+                        {
+                            eprintln!("{}", json::format_json_anchors(&fresh_ast));
+                        }
+                        process::exit(1);
+                    }
+                    json::JsonError::Other(msg) => {
+                        eprintln!("Error: {}", msg);
+                        process::exit(2);
+                    }
+                }
             }
 
             // Write back the modified JSON
@@ -270,7 +283,6 @@ fn main() {
                 process::exit(2);
             }
 
-            println!("Applied successfully.");
             if emit_updated {
                 // Re-format with updated anchors
                 println!("---");

@@ -1,32 +1,287 @@
 use crate::hash::compute_line_hash;
 use serde_json::Value;
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
-/// Parse a JSON file into a serde_json Value AST
+// ---------------------------------------------------------------------------
+// Error type (fix 3)
+// ---------------------------------------------------------------------------
+
+/// Typed error returned by `apply_json_edits`.
+pub enum JsonError {
+    HashMismatch {
+        path: String,
+        expected: String,
+        actual: String,
+    },
+    Other(String),
+}
+
+impl fmt::Display for JsonError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JsonError::HashMismatch {
+                path,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "Hash mismatch at {}: expected {}, got {}",
+                path, expected, actual
+            ),
+            JsonError::Other(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
+impl fmt::Debug for JsonError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl std::error::Error for JsonError {}
+
+impl From<String> for JsonError {
+    fn from(s: String) -> Self {
+        JsonError::Other(s)
+    }
+}
+
+impl From<&str> for JsonError {
+    fn from(s: &str) -> Self {
+        JsonError::Other(s.to_string())
+    }
+}
+
+impl From<serde_json::Error> for JsonError {
+    fn from(e: serde_json::Error) -> Self {
+        JsonError::Other(e.to_string())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Params struct (fix 5)
+// ---------------------------------------------------------------------------
+
+/// Parameters for `json-apply`: file path and list of edits.
+pub struct JsonApplyParams {
+    pub path: String,
+    pub edits: Vec<JsonEdit>,
+}
+
+impl<'de> serde::Deserialize<'de> for JsonApplyParams {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        struct Inner {
+            path: String,
+            edits: Vec<JsonEdit>,
+        }
+        let inner = Inner::deserialize(d)?;
+        Ok(JsonApplyParams {
+            path: inner.path,
+            edits: inner.edits,
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Path segment parser (fix 1)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum PathSegment {
+    Key(String),
+    Index(usize),
+}
+
+/// Parse a JSONPath string into segments.
+/// Supports: `$`, `$.a`, `$.a.b`, `$.a[0]`, `$.a[0].b`, etc.
+fn parse_path_segments(path: &str) -> Result<Vec<PathSegment>, JsonError> {
+    if path == "$" {
+        return Ok(vec![]);
+    }
+    if !path.starts_with('$') {
+        return Err(format!("Path must start with '$': {}", path).into());
+    }
+
+    let tail = &path[1..]; // everything after '$'
+    let bytes = tail.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+    let mut segments = Vec::new();
+
+    while i < len {
+        match bytes[i] {
+            b'.' => {
+                i += 1; // skip '.'
+                let start = i;
+                while i < len && bytes[i] != b'.' && bytes[i] != b'[' {
+                    i += 1;
+                }
+                let key = &tail[start..i];
+                if key.is_empty() {
+                    return Err(format!("Empty key segment in path: {}", path).into());
+                }
+                segments.push(PathSegment::Key(key.to_string()));
+            }
+            b'[' => {
+                i += 1; // skip '['
+                let start = i;
+                while i < len && bytes[i] != b']' {
+                    i += 1;
+                }
+                let idx_str = &tail[start..i];
+                let idx: usize = idx_str.parse().map_err(|_| {
+                    format!("Invalid array index '{}' in path: {}", idx_str, path)
+                })?;
+                if i < len && bytes[i] == b']' {
+                    i += 1; // skip ']'
+                }
+                segments.push(PathSegment::Index(idx));
+            }
+            other => {
+                return Err(format!(
+                    "Unexpected character '{}' in path: {}",
+                    other as char, path
+                )
+                .into());
+            }
+        }
+    }
+
+    Ok(segments)
+}
+
+/// Navigate immutably to the node identified by `segments`.
+fn query_path_segments<'a>(
+    ast: &'a Value,
+    segments: &[PathSegment],
+) -> Result<&'a Value, JsonError> {
+    let mut current = ast;
+    for (i, seg) in segments.iter().enumerate() {
+        match seg {
+            PathSegment::Key(key) => {
+                current = current
+                    .as_object()
+                    .ok_or_else(|| {
+                        JsonError::Other(format!(
+                            "Expected object at segment {} but got non-object",
+                            i
+                        ))
+                    })?
+                    .get(key)
+                    .ok_or_else(|| JsonError::Other(format!("Key not found: {}", key)))?;
+            }
+            PathSegment::Index(idx) => {
+                let arr = current.as_array().ok_or_else(|| {
+                    JsonError::Other(format!(
+                        "Expected array at segment {} but got non-array",
+                        i
+                    ))
+                })?;
+                current = arr.get(*idx).ok_or_else(|| {
+                    JsonError::Other(format!("Array index {} out of bounds", idx))
+                })?;
+            }
+        }
+    }
+    Ok(current)
+}
+
+/// Navigate mutably to the node identified by `segments`.
+fn query_path_segments_mut<'a>(
+    ast: &'a mut Value,
+    segments: &[PathSegment],
+) -> Result<&'a mut Value, JsonError> {
+    let mut current = ast;
+    for (i, seg) in segments.iter().enumerate() {
+        match seg {
+            PathSegment::Key(key) => {
+                current = current
+                    .as_object_mut()
+                    .ok_or_else(|| {
+                        JsonError::Other(format!(
+                            "Expected object at segment {} but got non-object",
+                            i
+                        ))
+                    })?
+                    .get_mut(key)
+                    .ok_or_else(|| JsonError::Other(format!("Key not found: {}", key)))?;
+            }
+            PathSegment::Index(idx) => {
+                let idx = *idx;
+                let arr = current.as_array_mut().ok_or_else(|| {
+                    JsonError::Other(format!(
+                        "Expected array at segment {} but got non-array",
+                        i
+                    ))
+                })?;
+                current = arr
+                    .get_mut(idx)
+                    .ok_or_else(|| JsonError::Other(format!("Array index {} out of bounds", idx)))?;
+            }
+        }
+    }
+    Ok(current)
+}
+
+// ---------------------------------------------------------------------------
+// Canonical JSON (fix 2)
+// ---------------------------------------------------------------------------
+
+/// Serialize `value` to canonical JSON with sorted object keys, recursively.
+pub fn canonical_json(value: &Value) -> String {
+    match value {
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            let pairs: Vec<String> = keys
+                .into_iter()
+                .map(|k| {
+                    format!(
+                        "{}:{}",
+                        serde_json::to_string(k).unwrap(),
+                        canonical_json(&map[k])
+                    )
+                })
+                .collect();
+            format!("{{{}}}", pairs.join(","))
+        }
+        Value::Array(arr) => {
+            let elems: Vec<String> = arr.iter().map(canonical_json).collect();
+            format!("[{}]", elems.join(","))
+        }
+        _ => serde_json::to_string(value).unwrap_or_else(|_| "null".to_string()),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/// Parse a JSON file into a serde_json Value AST.
 pub fn parse_json_ast(file_path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(file_path)?;
     let value: Value = serde_json::from_str(&content)?;
     Ok(value)
 }
 
-/// Compute a hash anchor for a JSON value at a given path
-/// Returns the path with a 2-character hash of the canonical JSON representation
+/// Compute a hash anchor for a JSON value at a given path.
+/// Uses canonical JSON (sorted keys) for stable hashing.
 pub fn compute_json_anchor(path: &str, value: &Value) -> String {
-    // Serialize to canonical JSON (compact, sorted keys)
-    let canonical = serde_json::to_string(value).unwrap_or_default();
-    // Use the existing hashline hash function for consistency
+    let canonical = canonical_json(value);
     let hash = compute_line_hash(0, &canonical);
     format!("{}:{}", path, hash)
 }
 
-/// Format JSON AST with inline anchor comments
-/// Returns pretty-printed JSON with // $.path:hash comments before each value
+/// Format JSON AST with inline anchor comments.
 pub fn format_json_anchors(ast: &Value) -> String {
-    format_json_with_anchors(ast, "$")
+    format_json_with_anchors_inner(ast, "$", 0)
 }
 
-/// JSON-specific edit operations
+/// JSON-specific edit operations.
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(untagged)]
 pub enum JsonEdit {
@@ -44,7 +299,7 @@ pub struct SetPathOp {
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct InsertAtPathOp {
     pub anchor: String,
-    pub key: Option<String>, // None for array append, Some(key) for object
+    pub key: Option<String>,
     pub value: Value,
 }
 
@@ -53,12 +308,9 @@ pub struct DeletePathOp {
     pub anchor: String,
 }
 
-/// Apply JSON edits to AST atomically
-/// Returns error if any anchor doesn't match current value
-pub fn apply_json_edits(
-    ast: &mut Value,
-    edits: &[JsonEdit],
-) -> Result<(), Box<dyn std::error::Error>> {
+/// Apply JSON edits to AST atomically.
+/// Returns `JsonError::HashMismatch` if any anchor hash does not match the current value.
+pub fn apply_json_edits(ast: &mut Value, edits: &[JsonEdit]) -> Result<(), JsonError> {
     // First pass: validate all anchors
     for edit in edits {
         let (path, expected_hash) = match edit {
@@ -66,14 +318,15 @@ pub fn apply_json_edits(
             JsonEdit::InsertAtPath { insert_at_path: op } => parse_anchor(&op.anchor)?,
             JsonEdit::DeletePath { delete_path: op } => parse_anchor(&op.anchor)?,
         };
-        let current_value = query_path(ast, &path)?;
-        let current_hash = compute_line_hash(0, &serde_json::to_string(current_value)?);
+        let segments = parse_path_segments(&path)?;
+        let current_value = query_path_segments(ast, &segments)?;
+        let current_hash = compute_line_hash(0, &canonical_json(current_value));
         if current_hash != expected_hash {
-            return Err(format!(
-                "Hash mismatch at {}: expected {}, got {}",
-                path, expected_hash, current_hash
-            )
-            .into());
+            return Err(JsonError::HashMismatch {
+                path,
+                expected: expected_hash,
+                actual: current_hash,
+            });
         }
     }
 
@@ -98,8 +351,11 @@ pub fn apply_json_edits(
     Ok(())
 }
 
-/// Parse anchor string into (path, hash)
-fn parse_anchor(anchor: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+fn parse_anchor(anchor: &str) -> Result<(String, String), JsonError> {
     if let Some(colon_pos) = anchor.rfind(':') {
         let path = &anchor[..colon_pos];
         let hash = &anchor[colon_pos + 1..];
@@ -113,106 +369,113 @@ fn parse_anchor(anchor: &str) -> Result<(String, String), Box<dyn std::error::Er
     }
 }
 
-/// Query value at JSONPath (simplified implementation for basic paths)
-fn query_path<'a>(ast: &'a Value, path: &str) -> Result<&'a Value, Box<dyn std::error::Error>> {
-    if path == "$" {
-        return Ok(ast);
-    }
-
-    if let Some(key) = path.strip_prefix("$.") {
-        if let Some(obj) = ast.as_object() {
-            if let Some(value) = obj.get(key) {
-                Ok(value)
-            } else {
-                Err(format!("Key not found: {}", key).into())
-            }
-        } else {
-            Err("Cannot query key on non-object".into())
-        }
-    } else {
-        Err(format!("Unsupported path format: {}", path).into())
-    }
-}
-
-/// Set value at JSONPath (basic implementation)
-fn set_path(ast: &mut Value, path: &str, value: Value) -> Result<(), Box<dyn std::error::Error>> {
-    if path == "$" {
+fn set_path(ast: &mut Value, path: &str, value: Value) -> Result<(), JsonError> {
+    let segments = parse_path_segments(path)?;
+    if segments.is_empty() {
         *ast = value;
         return Ok(());
     }
-
-    if let Some(key) = path.strip_prefix("$.") {
-        if let Some(obj) = ast.as_object_mut() {
-            obj.insert(key.to_string(), value);
-            Ok(())
-        } else {
-            Err("Cannot set path on non-object".into())
+    let (parent_segs, last) = segments.split_at(segments.len() - 1);
+    let parent = query_path_segments_mut(ast, parent_segs)?;
+    match &last[0] {
+        PathSegment::Key(key) => {
+            parent
+                .as_object_mut()
+                .ok_or_else(|| JsonError::Other("Expected object for set_path".to_string()))?
+                .insert(key.clone(), value);
         }
-    } else {
-        Err(format!("Unsupported path format: {}", path).into())
+        PathSegment::Index(idx) => {
+            let arr = parent
+                .as_array_mut()
+                .ok_or_else(|| JsonError::Other("Expected array for set_path".to_string()))?;
+            if *idx < arr.len() {
+                arr[*idx] = value;
+            } else {
+                return Err(JsonError::Other(format!(
+                    "Array index {} out of bounds in set_path",
+                    idx
+                )));
+            }
+        }
     }
+    Ok(())
 }
 
-/// Insert value at path (basic implementation)
 fn insert_at_path(
     ast: &mut Value,
-    _path: &str,
+    path: &str,
     key: Option<&str>,
     value: Value,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), JsonError> {
+    let segments = parse_path_segments(path)?;
+    let target = query_path_segments_mut(ast, &segments)?;
     if let Some(key) = key {
-        // Insert into object
-        if let Some(obj) = ast.as_object_mut() {
-            obj.insert(key.to_string(), value);
-            Ok(())
-        } else {
-            Err("Cannot insert key into non-object".into())
-        }
+        target
+            .as_object_mut()
+            .ok_or_else(|| JsonError::Other("Cannot insert key into non-object".to_string()))?
+            .insert(key.to_string(), value);
     } else {
-        // Append to array
-        if let Some(arr) = ast.as_array_mut() {
-            arr.push(value);
-            Ok(())
-        } else {
-            Err("Cannot append to non-array".into())
-        }
+        target
+            .as_array_mut()
+            .ok_or_else(|| JsonError::Other("Cannot append to non-array".to_string()))?
+            .push(value);
     }
+    Ok(())
 }
 
-/// Delete value at path (basic implementation)
-fn delete_path(ast: &mut Value, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(key) = path.strip_prefix("$.") {
-        if let Some(obj) = ast.as_object_mut() {
-            obj.remove(key);
-            Ok(())
-        } else {
-            Err("Cannot delete from non-object".into())
-        }
-    } else {
-        Err(format!("Unsupported path format: {}", path).into())
+fn delete_path(ast: &mut Value, path: &str) -> Result<(), JsonError> {
+    let segments = parse_path_segments(path)?;
+    if segments.is_empty() {
+        return Err(JsonError::Other("Cannot delete root".to_string()));
     }
+    let (parent_segs, last) = segments.split_at(segments.len() - 1);
+    let parent = query_path_segments_mut(ast, parent_segs)?;
+    match &last[0] {
+        PathSegment::Key(key) => {
+            parent
+                .as_object_mut()
+                .ok_or_else(|| JsonError::Other("Expected object for delete_path".to_string()))?
+                .remove(key);
+        }
+        PathSegment::Index(idx) => {
+            let arr = parent
+                .as_array_mut()
+                .ok_or_else(|| JsonError::Other("Expected array for delete_path".to_string()))?;
+            if *idx < arr.len() {
+                arr.remove(*idx);
+            } else {
+                return Err(JsonError::Other(format!(
+                    "Array index {} out of bounds in delete_path",
+                    idx
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
-/// Recursive helper to format JSON with anchors
-fn format_json_with_anchors(value: &Value, current_path: &str) -> String {
+/// Recursive formatter with proper indentation (fix 4).
+fn format_json_with_anchors_inner(value: &Value, current_path: &str, indent: usize) -> String {
+    let pad = "  ".repeat(indent);
     match value {
         Value::Object(map) => {
             let mut result = "{\n".to_string();
             for (i, (key, val)) in map.iter().enumerate() {
                 let path = format!("{}.{}", current_path, key);
                 let anchor = compute_json_anchor(&path, val);
-                result.push_str(&format!("  // {}\n", anchor));
+                result.push_str(&format!("{}  // {}\n", pad, anchor));
                 result.push_str(&format!(
-                    "  \"{}\": {}",
+                    "{}  \"{}\": {}",
+                    pad,
                     key,
-                    format_json_with_anchors(val, &path)
+                    format_json_with_anchors_inner(val, &path, indent + 1)
                 ));
                 if i < map.len() - 1 {
                     result.push(',');
                 }
                 result.push('\n');
             }
-            result.push('}');
+            result.push_str(&format!("{}}}", pad));
             result
         }
         Value::Array(arr) => {
@@ -220,20 +483,21 @@ fn format_json_with_anchors(value: &Value, current_path: &str) -> String {
             for (i, val) in arr.iter().enumerate() {
                 let path = format!("{}[{}]", current_path, i);
                 let anchor = compute_json_anchor(&path, val);
-                result.push_str(&format!("  // {}\n", anchor));
-                result.push_str(&format!("  {}", format_json_with_anchors(val, &path)));
+                result.push_str(&format!("{}  // {}\n", pad, anchor));
+                result.push_str(&format!(
+                    "{}  {}",
+                    pad,
+                    format_json_with_anchors_inner(val, &path, indent + 1)
+                ));
                 if i < arr.len() - 1 {
                     result.push(',');
                 }
                 result.push('\n');
             }
-            result.push(']');
+            result.push_str(&format!("{}]", pad));
             result
         }
-        _ => {
-            // For primitives, just return the JSON representation
-            serde_json::to_string_pretty(value).unwrap_or_else(|_| "null".to_string())
-        }
+        _ => serde_json::to_string_pretty(value).unwrap_or_else(|_| "null".to_string()),
     }
 }
 
@@ -246,7 +510,7 @@ mod tests {
     #[test]
     fn test_parse_valid_json() {
         let json = r#"{"name": "test", "value": 42}"#;
-        let temp_path = PathBuf::from("test_valid.json");
+        let temp_path = PathBuf::from("/tmp/test_valid_json_rs.json");
         fs::write(&temp_path, json).unwrap();
 
         let ast = parse_json_ast(&temp_path).unwrap();
@@ -259,7 +523,7 @@ mod tests {
     #[test]
     fn test_parse_invalid_json() {
         let invalid_json = r#"{"name": "test", "value":}"#;
-        let temp_path = PathBuf::from("test_invalid.json");
+        let temp_path = PathBuf::from("/tmp/test_invalid_json_rs.json");
         fs::write(&temp_path, invalid_json).unwrap();
 
         let result = parse_json_ast(&temp_path);
@@ -288,5 +552,98 @@ mod tests {
         assert!(formatted.contains("// $.value:"));
         assert!(formatted.contains("\"name\": \"test\""));
         assert!(formatted.contains("\"value\": 42"));
+    }
+
+    #[test]
+    fn test_canonical_json_sorted_keys() {
+        let a: Value = serde_json::from_str(r#"{"b": 1, "a": 2}"#).unwrap();
+        let b: Value = serde_json::from_str(r#"{"a": 2, "b": 1}"#).unwrap();
+        assert_eq!(canonical_json(&a), canonical_json(&b));
+    }
+
+    #[test]
+    fn test_parse_path_segments_root() {
+        let segs = parse_path_segments("$").unwrap();
+        assert!(segs.is_empty());
+    }
+
+    #[test]
+    fn test_parse_path_segments_nested() {
+        let segs = parse_path_segments("$.a.b.c").unwrap();
+        assert_eq!(
+            segs,
+            vec![
+                PathSegment::Key("a".to_string()),
+                PathSegment::Key("b".to_string()),
+                PathSegment::Key("c".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_path_segments_array() {
+        let segs = parse_path_segments("$.arr[0]").unwrap();
+        assert_eq!(
+            segs,
+            vec![
+                PathSegment::Key("arr".to_string()),
+                PathSegment::Index(0),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_path_segments_mixed() {
+        let segs = parse_path_segments("$.users[0].name").unwrap();
+        assert_eq!(
+            segs,
+            vec![
+                PathSegment::Key("users".to_string()),
+                PathSegment::Index(0),
+                PathSegment::Key("name".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_set_path_nested() {
+        let mut ast = serde_json::json!({"a": {"b": 1}});
+        set_path(&mut ast, "$.a.b", serde_json::json!(99)).unwrap();
+        assert_eq!(ast["a"]["b"], 99);
+    }
+
+    #[test]
+    fn test_set_path_array_index() {
+        let mut ast = serde_json::json!({"arr": [1, 2, 3]});
+        set_path(&mut ast, "$.arr[1]", serde_json::json!(42)).unwrap();
+        assert_eq!(ast["arr"][1], 42);
+    }
+
+    #[test]
+    fn test_insert_at_path_nested() {
+        let mut ast = serde_json::json!({"a": {"b": 1}});
+        insert_at_path(&mut ast, "$.a", Some("c"), serde_json::json!(3)).unwrap();
+        assert_eq!(ast["a"]["c"], 3);
+    }
+
+    #[test]
+    fn test_delete_path_nested() {
+        let mut ast = serde_json::json!({"a": {"b": 1, "c": 2}});
+        delete_path(&mut ast, "$.a.b").unwrap();
+        assert!(ast["a"].get("b").is_none());
+        assert_eq!(ast["a"]["c"], 2);
+    }
+
+    #[test]
+    fn test_apply_json_edits_hash_mismatch_returns_typed_error() {
+        let mut ast = serde_json::json!({"version": "1.0"});
+        let edits = vec![JsonEdit::SetPath {
+            set_path: SetPathOp {
+                anchor: "$.version:ff".to_string(), // wrong hash
+                value: serde_json::json!("2.0"),
+            },
+        }];
+        let result = apply_json_edits(&mut ast, &edits);
+        assert!(matches!(result, Err(JsonError::HashMismatch { .. })));
     }
 }
