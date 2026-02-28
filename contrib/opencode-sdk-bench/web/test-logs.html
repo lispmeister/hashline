@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Log Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    pre { background: #f0f0f0; padding: 10px; }
+    button { padding: 10px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard Log Test</h1>
+  
+  <button onclick="fetchLogs()">Fetch Logs</button>
+  <button onclick="fetchStatus()">Fetch Status</button>
+  <button onclick="startAutoRefresh()">Start Auto-Refresh (2s)</button>
+  <button onclick="stopAutoRefresh()">Stop Auto-Refresh</button>
+  
+  <h2>Status:</h2>
+  <pre id="status">Click "Fetch Status" to load...</pre>
+  
+  <h2>Logs:</h2>
+  <pre id="logs">Click "Fetch Logs" to load...</pre>
+  
+  <script>
+    let interval = null;
+    
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/log?tail=20');
+        const data = await res.json();
+        document.getElementById('logs').textContent = 
+          `Found ${data.lines.length} log lines:\n\n` + 
+          data.lines.join('\n');
+      } catch (e) {
+        document.getElementById('logs').textContent = 'ERROR: ' + e.message;
+      }
+    }
+    
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('status').textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        document.getElementById('status').textContent = 'ERROR: ' + e.message;
+      }
+    }
+    
+    function startAutoRefresh() {
+      if (interval) return;
+      interval = setInterval(() => {
+        fetchLogs();
+        fetchStatus();
+      }, 2000);
+      document.getElementById('status').textContent = 'Auto-refresh started...';
+    }
+    
+    function stopAutoRefresh() {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+        document.getElementById('status').textContent = 'Auto-refresh stopped';
+      }
+    }
+    
+    // Auto-fetch on load
+    fetchLogs();
+    fetchStatus();
+  </script>
+</body>
+</html>

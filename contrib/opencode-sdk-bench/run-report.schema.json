@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hashline.dev/schemas/opencode-sdk-bench/run-report.schema.json",
+  "title": "OpenCode SDK Benchmark Run Report",
+  "type": "object",
+  "required": ["startedAt", "finishedAt", "config", "model", "results"],
+  "properties": {
+    "startedAt": { "type": "string" },
+    "finishedAt": { "type": "string" },
+    "config": {
+      "type": "object",
+      "required": ["workspaceDir", "fixturesDir", "runsDir", "mode", "repeats", "sizes"],
+      "properties": {
+        "workspaceDir": { "type": "string" },
+        "fixturesDir": { "type": "string" },
+        "runsDir": { "type": "string" },
+        "mode": { "enum": ["hashline", "raw_replace", "patch"] },
+        "repeats": { "type": "integer", "minimum": 1 },
+        "sizes": {
+          "type": "array",
+          "items": { "enum": ["small", "mid", "large"] },
+          "minItems": 1
+        },
+        "model": { "type": "string" }
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["providerID", "modelID", "label"],
+      "properties": {
+        "providerID": { "type": "string" },
+        "modelID": { "type": "string" },
+        "label": { "type": "string" }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["size", "caseId", "mode", "model", "attempts"],
+        "properties": {
+          "size": { "enum": ["small", "mid", "large"] },
+          "caseId": { "type": "string" },
+          "mode": { "enum": ["hashline", "raw_replace", "patch"] },
+          "model": { "$ref": "#/$defs/modelRef" },
+          "attempts": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/attemptResult" },
+            "minItems": 1
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "modelRef": {
+      "type": "object",
+      "required": ["providerID", "modelID", "label"],
+      "properties": {
+        "providerID": { "type": "string" },
+        "modelID": { "type": "string" },
+        "label": { "type": "string" }
+      }
+    },
+    "attemptResult": {
+      "type": "object",
+      "required": ["attempt", "passed", "reason", "metrics", "sessionID", "events"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1 },
+        "passed": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "sessionID": { "type": "string" },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["timestamp", "type"],
+            "properties": {
+              "timestamp": { "type": "number" },
+              "type": { "type": "string" },
+              "sessionID": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "required": ["durationMs", "retries", "errorCount"],
+          "properties": {
+            "durationMs": { "type": "number", "minimum": 0 },
+            "retries": { "type": "integer", "minimum": 0 },
+            "errorCount": { "type": "integer", "minimum": 0 },
+            "tokenInput": { "type": "number" },
+            "tokenOutput": { "type": "number" },
+            "tokenReasoning": { "type": "number" },
+            "tokenTotal": { "type": "number" },
+            "cost": { "type": "number" }
+          }
+        }
+      }
+    }
+  }
+}

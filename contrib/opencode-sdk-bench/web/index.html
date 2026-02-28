@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Benchmark Dashboard</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #17212b;
+        background: linear-gradient(180deg, #f2f6fb 0%, #f7f8fb 100%);
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0;
+      }
+
+      .tab-btn {
+        border: 1px solid #c5d1de;
+        background: #fff;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .tab-btn.active {
+        border-color: #147d7f;
+        background: #e9fbfb;
+      }
+
+      .tab {
+        display: none;
+      }
+
+      .tab.active {
+        display: block;
+      }
+      section {
+        background: #fff;
+        border: 1px solid #dde7f2;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .provider {
+        border: 1px solid #e3e8ef;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+
+      .models {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 8px;
+      }
+
+      pre.log {
+        background: #101725;
+        color: #cce2ff;
+        border-radius: 8px;
+        padding: 10px;
+        height: 220px;
+        overflow: auto;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th, td {
+        text-align: left;
+        font-size: 13px;
+        border-bottom: 1px solid #e5eaf2;
+        padding: 6px;
+      }
+
+      button {
+        border: 1px solid #afbccd;
+        border-radius: 8px;
+        background: #fff;
+        padding: 7px 11px;
+        cursor: pointer;
+      }
+
+      button.primary {
+        border-color: #147d7f;
+        background: #147d7f;
+        color: #fff;
+      }
+
+      .muted { color: #5f6e83; }
+
+      .progress-track {
+        width: 100%;
+        height: 12px;
+        border-radius: 999px;
+        border: 1px solid #d7e1ef;
+        background: #f5f8fc;
+        overflow: hidden;
+        margin: 6px 0;
+      }
+
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #147d7f, #29a5a8);
+        transition: width 0.25s ease;
+      }
+
+      .model-search {
+        width: 100%;
+        max-width: 460px;
+        padding: 8px;
+        border: 1px solid #c5d1de;
+        border-radius: 8px;
+      }
+
+      .model-list {
+        margin-top: 8px;
+        max-height: 220px;
+        overflow: auto;
+        border: 1px solid #dbe5f1;
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      .model-item {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+
+      .run-row {
+        cursor: pointer;
+      }
+
+      .run-row:hover {
+        background: #f0f5fa;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+      }
+
+      .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 900px;
+        max-height: 80vh;
+        overflow: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .modal-close {
+        cursor: pointer;
+        font-size: 24px;
+        color: #5f6e83;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OpenCode Benchmark Dashboard</h1>
+      <p class="muted">Run tests, follow live logs, and review historical runs.</p>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="run">Run</button>
+        <button class="tab-btn" data-tab="previous">Previous Runs</button>
+        <button class="tab-btn" data-tab="admin">Admin</button>
+      </div>
+
+      <div id="tab-run" class="tab active">
+        <section>
+          <h2>Configuration</h2>
+          <div class="row">
+            <label><input type="checkbox" name="mode" value="hashline" checked /> hashline</label>
+            <label><input type="checkbox" name="mode" value="raw_replace" checked /> raw_replace</label>
+            <label><input type="checkbox" name="mode" value="patch" /> patch</label>
+            <label><input type="checkbox" name="size" value="small" checked /> small</label>
+            <label><input type="checkbox" name="size" value="mid" checked /> mid</label>
+            <label><input type="checkbox" name="size" value="large" checked /> large</label>
+            <label>repeats <input id="repeats" type="number" min="1" value="1" style="width:70px" /></label>
+            <button id="start-run" class="primary">RUN</button>
+            <button id="stop-run">STOP</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Providers and Models</h2>
+          <div id="models"></div>
+        </section>
+
+        <section>
+          <h2>Live Status</h2>
+          <div class="row" style="margin-bottom: 8px;">
+            <label><input type="checkbox" id="auto-refresh" checked /> Auto-refresh (2s)</label>
+          </div>
+          <div id="status"></div>
+          <h3>Progress</h3>
+          <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+          <div id="progress-label" class="muted"></div>
+          <div id="progress"></div>
+        </section>
+
+          <p id="run-msg" class="muted"></p>
+
+        <section>
+          <h2>Run Log</h2>
+          <pre id="log" class="log"></pre>
+        </section>
+      </div>
+
+      <div id="tab-previous" class="tab">
+        <section>
+          <h2>Aggregate Statistics</h2>
+          <div id="stats-summary"></div>
+        </section>
+
+        <section>
+          <h2>Previous Runs</h2>
+          <div class="row" style="margin-bottom: 12px;">
+            <button id="export-csv">Export as CSV</button>
+            <button id="export-json">Export as JSON</button>
+          </div>
+          <div id="runs"></div>
+        </section>
+      </div>
+
+      <div id="tab-admin" class="tab">
+        <section>
+          <h2>Admin</h2>
+          <div class="row">
+            <button id="rebuild-db" class="primary">Drop + Rebuild DB from JSON</button>
+            <button id="drop-db">Drop DB Only</button>
+          </div>
+          <p id="admin-msg" class="muted"></p>
+        </section>
+      </div>
+    </main>
+
+    <div id="detail-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Run Details</h2>
+          <span class="modal-close" onclick="closeDetailModal()">&times;</span>
+        </div>
+        <div id="detail-content"></div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

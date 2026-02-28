@@ -1,0 +1,32 @@
+{
+  "service": {
+    "config": {
+      "cache": {
+        "enabled": true,
+        "ttl": 300
+      },
+      "database": {
+        "primary": {
+          "host": "db.prod.example.com",
+          "pool": {
+            "max": 10,
+            "min": 2
+          },
+          "port": 5432,
+          "ssl": true
+        },
+        "replica": {
+          "host": "db-replica.prod.example.com",
+          "pool": {
+            "max": 5,
+            "min": 1
+          },
+          "port": 5432,
+          "ssl": true
+        }
+      }
+    },
+    "name": "api-gateway",
+    "version": "2.1.0"
+  }
+}

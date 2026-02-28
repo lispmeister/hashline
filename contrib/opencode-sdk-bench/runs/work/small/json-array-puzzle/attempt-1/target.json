@@ -1,0 +1,49 @@
+{
+  "pipeline": {
+    "stages": [
+      {
+        "name": "build",
+        "steps": [
+          {
+            "command": "npm install",
+            "name": "install"
+          },
+          {
+            "command": "npm run build",
+            "name": "compile"
+          }
+        ]
+      },
+      {
+        "name": "test",
+        "steps": [
+          {
+            "command": "npm test",
+            "name": "unit"
+          },
+          {
+            "command": "npm run lint",
+            "name": "lint"
+          }
+        ]
+      },
+      {
+        "name": "deploy",
+        "steps": [
+          {
+            "command": "docker build -t app .",
+            "name": "build"
+          },
+          {
+            "command": "docker push app",
+            "name": "push"
+          },
+          {
+            "command": "kubectl apply -f deploy.yaml",
+            "name": "release"
+          }
+        ]
+      }
+    ]
+  }
+}
