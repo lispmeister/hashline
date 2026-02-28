@@ -1,0 +1,18 @@
+{
+  "status": "done",
+  "mode": "hashline",
+  "model": "opencode/big-pickle",
+  "currentCase": 6,
+  "totalCases": 6,
+  "currentAttempt": 1,
+  "attemptsPerCase": 1,
+  "completedAttempts": 6,
+  "totalAttempts": 6,
+  "passCount": 4,
+  "errorCount": 225,
+  "retryCount": 0,
+  "totalCost": 0,
+  "elapsedTimeMs": 268317,
+  "startedAt": "2026-02-27T09:09:20.169Z",
+  "reportPath": "/Users/fix/projects/claude-code/hashline/contrib/opencode-sdk-bench/runs/2026-02-27T09-13-48-484Z-hashline-opencode_big-pickle.json"
+}

@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.2.15",
+    "better-sqlite3": "^11.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "name": "opencode-sdk-bench",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dashboard": "node server.js",
+    "dev": "tsx watch src/cli.ts",
+    "run": "tsx src/cli.ts",
+    "run:safe": "tsx src/run-with-guard.ts",
+    "start": "node server.js"
+  },
+  "type": "module",
+  "version": "0.0.0"
+}
