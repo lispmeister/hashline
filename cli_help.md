@@ -62,3 +62,14 @@ AGENT WORKFLOW
     Use \n in strings for multi-line content.
     Batch multiple edits to one file in a single apply call.
     replace edits run after all anchor edits and error on ambiguous matches.
+
+
+    AGENT SETUP / DOCTOR
+    Claude Code quick setup:
+        hashline setup --agent claude --run-tests
+    Verify integration and simulated enforcement:
+        hashline doctor --agent claude --simulate
+    Other agents (scaffold mode):
+        hashline setup --agent cursor
+        hashline setup --agent windsurf
+        hashline setup --agent generic

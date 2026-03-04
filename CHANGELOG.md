@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.1.15] - 2026-03-04
+
+### Added
+
+- `setup` and `doctor` CLI commands for agent onboarding and health checks
+- `setup --agent` scaffold for `claude`, `cursor`, `windsurf`, and `generic`
+- Hook parser hardening coverage for env-prefixed commands, `-i` input, quoted paths, and strict mode
+- Integration test coverage for `hashline hash` output cardinality regression
+
+### Fixed
+
+- `hashline hash` no longer prints duplicate output
+- Hook parser now supports `-i` as an alias for `--input`
+- Hook parser now handles quoted/spaced paths and env-prefixed `hashline` invocations
+- Added optional strict mode (`HASHLINE_HOOK_STRICT=1`) to fail closed when apply target path cannot be determined
+- Pre-hook remediation now points JSON flows to `hashline json-read`
+- README/template/spec consistency fixes (test paths, template fences, JSON key notation docs)
+
+## [0.1.14] - 2026-03-04
+
+### Changed
+
+- Moved hook logic from bash scripts into `hashline hook pre` / `hashline hook post` subcommands
+- Eliminated jq dependency from hook runtime, external hook scripts, and absolute hook script path requirements
+- Hook registrations now use `hashline hook pre` / `hashline hook post` directly
+- Removed legacy hook scripts from `contrib/hooks/`
+- Updated docs and tests for native hook-subcommand workflow
+
+## [0.1.13] - 2026-03-04
+
+### Changed
+
+- Fixed skill hook download URLs and removed dead code in legacy hook scripts
+- Added CLAUDE.md template injection step to skill docs
+- Updated README agent integration ordering and setup guidance
+
+## [0.1.12] - 2026-02-26
+
+### Added
+
+- JSON bracket-notation anchor support for special keys and additional regression coverage
+- JSON workflow CLI/integration tests for mismatch diagnostics and round trips
+- Usage instrumentation with opt-out environment variables
+
+### Fixed
+
+- `--emit-updated` preview behavior for replace-only edits
+- `insert_at_path` key/index exclusivity enforcement
+
+### Changed
+
+- Refreshed README/AGENTS/HASHLINE_TEMPLATE docs for `--input`, `--emit-updated`, and bracket notation
+- Consolidated normalized file reads and modernized temp-file based tests
+
+
 ## [0.1.9] - 2026-02-26
 
 ### Added
@@ -137,3 +192,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.5]: https://github.com/lispmeister/hashline/releases/tag/v0.1.5
 [0.1.4]: https://github.com/lispmeister/hashline/releases/tag/v0.1.4
 [0.1.3]: https://github.com/lispmeister/hashline/releases/tag/v0.1.3
+[0.1.15]: https://github.com/lispmeister/hashline/releases/tag/v0.1.15
+[0.1.14]: https://github.com/lispmeister/hashline/releases/tag/v0.1.14
+[0.1.13]: https://github.com/lispmeister/hashline/releases/tag/v0.1.13
+[0.1.12]: https://github.com/lispmeister/hashline/releases/tag/v0.1.12
+[0.1.11]: https://github.com/lispmeister/hashline/releases/tag/v0.1.11
+[0.1.10]: https://github.com/lispmeister/hashline/releases/tag/v0.1.10
+[0.1.9]: https://github.com/lispmeister/hashline/releases/tag/v0.1.9
+[0.1.8]: https://github.com/lispmeister/hashline/releases/tag/v0.1.8

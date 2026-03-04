@@ -15,6 +15,7 @@
 # Session file the hooks will use (keyed by PPID = this script's $$ for direct children)
 SESSION="/tmp/hashline_session_$$"
 STDIN_TMP="/tmp/hashline_test_stdin_$$"
+export HASHLINE_SESSION_FILE="$SESSION"
 
 pass=0; fail=0
 
@@ -161,6 +162,43 @@ expect "json-apply on stale file is blocked" \
     "$(pre_bash_input 'hashline json-apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.json", "edits": []}
 EOF')" pre 2 "stale"
+
+
+# -i variant should behave like --input
+reset_session
+TMPJSON=$(mktemp /tmp/test_edits_short_XXXXXX.json)
+printf '{"path": "/tmp/hashline_test_file.rs", "edits": []}' > "$TMPJSON"
+set_session "read:/tmp/hashline_test_file.rs"
+expect "-i variant allowed when file is read"     "$(pre_bash_input "hashline apply -i $TMPJSON")" pre 0
+rm -f "$TMPJSON"
+
+# Quoted path with spaces in --input file
+reset_session
+TMPJSON=$(mktemp "/tmp/test edits spaced XXXX.json")
+printf '{"path": "/tmp/hashline_test_file.rs", "edits": []}' > "$TMPJSON"
+set_session "read:/tmp/hashline_test_file.rs"
+expect "quoted --input path with spaces is parsed"     "$(pre_bash_input "hashline apply --input '$TMPJSON'")" pre 0
+rm -f "$TMPJSON"
+
+# Env-prefix command still recognized
+reset_session
+set_session "read:/tmp/hashline_test_file.rs"
+expect "env-prefixed apply command is recognized"     "$(pre_bash_input 'FOO=1 hashline apply << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.rs", "edits": []}
+EOF')" pre 0
+
+# Strict mode blocks unresolved apply target
+reset_session
+export HASHLINE_HOOK_STRICT=1
+expect "strict mode blocks unresolved apply target"     "$(pre_bash_input 'hashline apply --input /tmp/definitely_missing_hashline_file.json')" pre 2 "strict mode"
+unset HASHLINE_HOOK_STRICT
+
+# json-apply guidance should mention json-read
+reset_session
+expect "json-apply block message recommends json-read"     "$(pre_bash_input 'hashline json-apply << '"'"'EOF'"'"'
+{"path": "/tmp/hashline_test_file.json", "edits": []}
+EOF')" pre 2 "hashline json-read"
+
 
 
 # ── PostToolUse: track_hashline ──────────────────────────────────────────────

@@ -107,7 +107,7 @@ In the same `settings.json` or `settings.local.json`, ensure hashline is allowed
 
 ## How session tracking works
 
-The hook subcommands share a session file at `/tmp/hashline_session_<PPID>`, where `PPID` is the process ID of the Claude Code process (which is the parent of the hook process). This gives each Claude Code session its own isolated tracking state.
+The hook subcommands share a session file at `/tmp/hashline_session_<PPID>`, where `PPID` is the parent process ID. You can override this path with `HASHLINE_SESSION_FILE` (used by diagnostics/tests).
 
 **Entries in the session file:**
 
@@ -149,7 +149,7 @@ This means all three PreToolUse matchers can use the same `hashline hook pre` co
 
 **Path normalization**: The hooks resolve relative file paths against the current working directory. For `hashline read src/main.rs` and `hashline apply` with `"path": "src/main.rs"`, both resolve to the same absolute path. If for some reason the working directory differs between the read and the apply commands, the lookup may fail. The safe approach is to use the same path format (absolute or relative from project root) consistently.
 
-**Heredoc path extraction**: When `hashline apply` is called with a heredoc, the hook extracts the `"path"` field from the embedded JSON using a regex. This works for standard single-file payloads. If the JSON is minified, deeply nested, or the `path` key is on the same line as other fields in an unusual order, extraction may fail — in which case the hook allows the apply through and relies on hashline's own anchor verification to catch stale anchors.
+**Heredoc path extraction**: When `hashline apply` is called with a heredoc, the hook extracts the `"path"` field from embedded JSON via regex. This works for standard payloads. If extraction fails, default mode allows the apply through and relies on hashline's own anchor checks; strict mode (`HASHLINE_HOOK_STRICT=1`) blocks unresolved targets fail-closed.
 
 **Batching**: The hooks cannot enforce "all edits to one file in one apply call". This remains an advisory rule.
 

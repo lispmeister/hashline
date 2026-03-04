@@ -5,6 +5,7 @@ use std::path::Path;
 use std::process;
 
 mod cli;
+mod doctor;
 mod edit;
 mod error;
 mod format;
@@ -13,6 +14,7 @@ mod heuristics;
 mod hook;
 mod json;
 mod parse;
+mod setup;
 mod usage;
 mod util;
 
@@ -263,10 +265,6 @@ fn main() {
                 println!("{}:{}", num, hash::compute_line_hash(num, line));
             }
 
-            for (i, line) in content.split('\n').enumerate() {
-                let num = i + 1;
-                println!("{}:{}", num, hash::compute_line_hash(num, line));
-            }
             record_usage("hash", UsageResult::Success, false, false);
         }
         Commands::JsonRead { file } => {
@@ -417,6 +415,19 @@ fn main() {
                 emit_updated,
                 used_input_file,
             );
+        }
+        Commands::Setup {
+            agent,
+            settings_file,
+            dry_run,
+            run_tests,
+        } => {
+            let code = setup::run(agent, settings_file.as_deref(), dry_run, run_tests);
+            process::exit(code);
+        }
+        Commands::Doctor { agent, simulate } => {
+            let code = doctor::run(agent, simulate);
+            process::exit(code);
         }
         Commands::Hook { action } => {
             let code = match action {

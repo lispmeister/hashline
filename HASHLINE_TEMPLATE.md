@@ -6,7 +6,7 @@ Paste at the **top** of your project's `CLAUDE.md`, `AGENTS.md`, or equivalent â
 
 # Editing Files
 
-**NEVER edit a file you haven't read with `hashline read` in this conversation.**
+**NEVER edit a file you haven't read with `hashline read` or `hashline json-read` in this conversation.**
 For all code edits, use the hashline CLI via Bash instead of the built-in Edit tool.
 For creating new files, use the Write tool. For deleting files, use `rm`.
 
@@ -127,9 +127,6 @@ Prepare edits (`json-edits.json`):
 hashline json-apply --emit-updated --input json-edits.json
 ```
 
-```
-
-```
 
 ### JSON Operations
 
