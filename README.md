@@ -222,7 +222,7 @@ Hashline works with any AI coding agent that accepts system-prompt instructions:
 
 ```sh
 mkdir -p ~/.claude/skills/hashline-setup
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/skills/hashline-setup/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/skills/hashline-setup/SKILL.md \
     -o ~/.claude/skills/hashline-setup/SKILL.md
 ```
 
