@@ -79,6 +79,15 @@ cargo install --path .
 Hashline works with any AI coding agent that accepts system-prompt instructions: Claude Code, Cursor, Windsurf, and others.
 
 ### Claude Code (recommended)
+Fast path from any shell:
+
+```sh
+hashline setup --agent claude --run-tests
+```
+
+This idempotently updates `.claude/settings.local.json`, injects hashline instructions into `CLAUDE.md`, and runs hook tests.
+
+If you prefer the Claude Code-native flow, use the skill:
 
 **1. Install the skill** (one-time, global — available in all your projects):
 
@@ -94,20 +103,28 @@ curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/s
 /hashline-setup
 ```
 
-The skill:
-- Installs hook scripts that **block Claude's native Edit tool and require `hashline apply` for all file edits**
-- Registers the hooks in `.claude/settings.local.json`
-- Prepends hashline editing instructions to your project's `CLAUDE.md` so Claude knows the workflow
-- Runs the test suite to verify everything works
+Use `hashline doctor --agent claude --simulate` to verify that permissions, hooks, and enforcement are active.
 
-Without this setup, Claude falls back to standard text replacement and you lose hashline's safety guarantees. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for manual installation and [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) for the raw instructions template.
+Without setup, Claude falls back to standard text replacement and you lose hashline safety guarantees. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) and [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) for details.
 
 ### Other agents (Cursor, Windsurf, etc.)
-
 1. Install the `hashline` binary
-2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `AGENTS.md` or equivalent rules file — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
+2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your agent rules file
+3. Run `hashline setup --agent cursor|windsurf|generic` for scaffolded guidance
+4. Use `hashline doctor --agent <agent>` to inspect available guarantees
 
-The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
+Agent-specific starter templates:
+- `contrib/templates/AGENTS_CURSOR.md`
+- `contrib/templates/AGENTS_WINDSURF.md`
+- `contrib/templates/AGENTS_GENERIC.md`
+
+## Agent Compatibility
+| Agent | Edit tool block | Read-before-apply | Session tracking | Status |
+|---|---|---|---|---|
+| Claude Code | ✅ via hooks | ✅ via hooks | ✅ via hooks | First-class |
+| Cursor | ⚠️ advisory | ⚠️ advisory | ⚠️ advisory | Scaffolded |
+| Windsurf | ⚠️ advisory | ⚠️ advisory | ⚠️ advisory | Scaffolded |
+| Generic | ⚠️ advisory | ⚠️ advisory | ⚠️ advisory | Scaffolded |
 
 ## Usage
 
@@ -278,7 +295,7 @@ cargo test --test comparison -- --nocapture
 cargo run --release --bin bench
 
 # Run Claude Code hook tests (bash, requires jq)
-bash .claude/hooks/tests/test_hooks.sh
+bash contrib/hooks/tests/test_hooks.sh
 ```
 
 The comparison suite applies each of 10 fixture scenarios two ways — hashline anchors vs naive string replacement — and prints a pass/fail table showing where hashline succeeds and raw mode fails.

@@ -33,7 +33,7 @@ Batch all changes to a file into one `edits` array — edits are atomic (all suc
 Prefer `--input` over a heredoc to avoid shell guard false positives on complex content:
 
 ```bash
-hashline apply --input /tmp/edits.json
+hashline apply --emit-updated --input /tmp/edits.json
 ```
 
 Heredoc form (fine for simple payloads):
@@ -173,6 +173,31 @@ Copy the updated anchor (`$.version:c9`) from the `>>>` line into your edit and 
 - Prefer anchor ops (`set_line`, `replace_lines`, `insert_after`) over `replace` — they are safer and more precise
 - For JSON files, prefer semantic JSON operations (`set_path`, `insert_at_path`, `delete_path`) over line-based editing
 - Never guess a hash — always read first
+
+## Setup and Diagnostics
+
+Use built-in setup/doctor commands when bootstrapping a repo:
+
+```sh
+hashline setup --agent claude --run-tests
+hashline doctor --agent claude --simulate
+```
+
+For non-Claude agents, setup is currently scaffold/advisory mode:
+
+```sh
+hashline setup --agent cursor
+hashline setup --agent windsurf
+hashline setup --agent generic
+```
+
+`hashline doctor --agent <agent>` reports which guarantees are enforced vs advisory.
+
+Optional strict hook mode (fail closed when apply target cannot be extracted):
+
+```sh
+export HASHLINE_HOOK_STRICT=1
+```
 
 ## Keeping the binary current
 

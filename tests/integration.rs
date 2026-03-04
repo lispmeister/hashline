@@ -1094,3 +1094,21 @@ fn cli_emit_updated_handles_replace_only() {
     let updated = fs::read_to_string(tmp.path()).unwrap();
     assert_eq!(updated, "FOO\nbar\n");
 }
+
+#[test]
+fn cli_hash_outputs_each_line_once() {
+    let tmp = NamedTempFile::new().unwrap();
+    fs::write(tmp.path(), "one\ntwo\n").unwrap();
+
+    let output = hashline_bin()
+        .args(["hash", tmp.path().to_str().unwrap()])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2);
+    assert!(lines[0].starts_with("1:"));
+    assert!(lines[1].starts_with("2:"));
+}

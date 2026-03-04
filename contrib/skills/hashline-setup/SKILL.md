@@ -5,12 +5,7 @@ argument-hint: [settings-file: settings.json or settings.local.json (default)]
 disable-model-invocation: true
 ---
 
-Set up hashline Claude Code hooks in the current project by following these steps exactly.
-
-## Determine target settings file
-
-If `$ARGUMENTS` specifies `settings.json`, use `.claude/settings.json`.
-Otherwise default to `.claude/settings.local.json`.
+Set up hashline Claude Code integration in the current project by using hashline's built-in setup command.
 
 ## Step 1 — Verify hashline is installed
 
@@ -18,111 +13,50 @@ Otherwise default to `.claude/settings.local.json`.
 hashline --version
 ```
 
-If the command fails, stop and tell the user to install hashline first:
-- Homebrew: `brew install lispmeister/hashline/hashline`
-- From source: `cargo install --path .` (if in the hashline repo)
-- Script: `curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh`
+If this fails, stop and tell the user to install hashline first.
 
-Verify it supports the `hook` subcommand:
+## Step 2 — Resolve settings target
 
-```bash
-hashline hook --help
-```
+If `$ARGUMENTS` is `settings.json`, use `--settings-file .claude/settings.json`.
+Otherwise, use the default (`.claude/settings.local.json`).
 
-If this fails, the installed version is too old. Tell the user to upgrade.
+## Step 3 — Run setup
 
-## Step 2 — Merge hook configuration into the settings file
-
-Read the existing settings file (if it exists) and merge in the following structure, preserving any existing keys. Use the Write tool to write the result. Do not overwrite unrelated permissions or hooks.
-
-The hooks to add:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(hashline:*)"
-    ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit",
-        "hooks": [{
-          "type": "command",
-          "command": "hashline hook pre"
-        }]
-      },
-      {
-        "matcher": "NotebookEdit",
-        "hooks": [{
-          "type": "command",
-          "command": "hashline hook pre"
-        }]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [{
-          "type": "command",
-          "command": "hashline hook pre"
-        }]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [{
-          "type": "command",
-          "command": "hashline hook post"
-        }]
-      }
-    ]
-  }
-}
-```
-
-Rules for the merge:
-- If `permissions.allow` already exists, append `"Bash(hashline:*)"` only if not already present.
-- If hook matchers for `Edit`, `NotebookEdit`, or `Bash` already exist, do not duplicate them — skip any that are already registered.
-- Write the final merged JSON to the target settings file with 2-space indentation.
-
-## Step 3 — Verify the hooks work
-
-Download and run the test suite:
+Default:
 
 ```bash
-mkdir -p .claude/hooks/tests
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/tests/test_hooks.sh \
-    -o .claude/hooks/tests/test_hooks.sh
-chmod +x .claude/hooks/tests/test_hooks.sh
-bash .claude/hooks/tests/test_hooks.sh
+hashline setup --agent claude --run-tests
 ```
 
-All tests must pass (output ends with `N passed, 0 failed`). If any fail, report the failures and do not proceed.
-
-## Step 4 — Add hashline instructions to CLAUDE.md
-
-Download the hashline editing template and prepend it to the project's `CLAUDE.md` so Claude knows how to use hashline instead of the Edit tool.
+If `settings.json` was requested:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/HASHLINE_TEMPLATE.md \
-    -o /tmp/hashline_template.md
+hashline setup --agent claude --settings-file .claude/settings.json --run-tests
 ```
 
-Then read the project's existing `CLAUDE.md` (if it exists). Prepend everything in `/tmp/hashline_template.md` **after the `---` line** (the content below the frontmatter separator) to the top of `CLAUDE.md`. If `CLAUDE.md` does not exist, create it with just the template content (after the `---`).
+This command is idempotent and will:
+- Merge required permissions/hooks into the target settings file
+- Inject hashline instructions into `CLAUDE.md` (without duplicating)
+- Run hook tests (`contrib/hooks/tests/test_hooks.sh`)
 
-Do not duplicate — if `CLAUDE.md` already contains the line `NEVER edit a file you haven't read with \`hashline read\``, skip this step.
+## Step 4 — Verify with doctor
+
+```bash
+hashline doctor --agent claude --simulate
+```
+
+If doctor reports failures, surface them to the user and stop.
 
 ## Step 5 — Report
-
 Tell the user:
-- Which settings file was updated
-- That `CLAUDE.md` now contains hashline editing instructions
-- That hooks are now active for this session (a restart may be needed for Claude Code to reload settings)
-- How to test manually: `hashline apply` without a prior `hashline read` should be blocked
+- Which settings file was used
+- That `CLAUDE.md` contains hashline instructions
+- That they may need to restart Claude Code for settings reload
+- That `hashline apply` without prior read should now be blocked by hooks
 
 ## Notes
 
-- No external scripts or absolute paths are needed — all hook logic is built into the `hashline` binary.
-- The test suite requires `jq` to be installed (for constructing test JSON; the hooks themselves do not use jq).
-- See `HASHLINE_HOOKS.md` in the hashline repo for full documentation.
+- Uses embedded setup assets from the installed hashline version (no remote downloads required).
+- Hook runtime has no jq dependency; test harness still uses jq.
+- For manual details, see `HASHLINE_HOOKS.md`.
+

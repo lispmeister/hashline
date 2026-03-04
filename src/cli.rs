@@ -1,4 +1,4 @@
-use clap::{builder::RangedU64ValueParser, Parser, Subcommand};
+use clap::{builder::RangedU64ValueParser, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(
@@ -167,12 +167,43 @@ Register in .claude/settings.json:\n\
         #[command(subcommand)]
         action: HookAction,
     },
+    /// Configure hashline for coding agents
+    Setup {
+        /// Target agent integration
+        #[arg(long, default_value = "claude")]
+        agent: SetupAgent,
+        /// Override settings file path for Claude setup
+        #[arg(long)]
+        settings_file: Option<String>,
+        /// Preview changes without writing files
+        #[arg(long)]
+        dry_run: bool,
+        /// Run hook tests after setup (Claude only)
+        #[arg(long)]
+        run_tests: bool,
+    },
+    /// Diagnose hashline agent integration health
+    Doctor {
+        /// Target agent integration
+        #[arg(long, default_value = "claude")]
+        agent: SetupAgent,
+        /// Run simulated enforcement check (Claude only)
+        #[arg(long)]
+        simulate: bool,
+    },
 }
-
 #[derive(Subcommand)]
 pub enum HookAction {
     /// PreToolUse hook: blocks Edit/NotebookEdit, enforces read-before-apply
     Pre,
     /// PostToolUse hook: tracks hashline read/apply session state
     Post,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum SetupAgent {
+    Claude,
+    Cursor,
+    Windsurf,
+    Generic,
 }

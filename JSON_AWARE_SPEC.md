@@ -32,7 +32,7 @@ The implementation supports a subset of JSONPath sufficient for real-world JSON 
 | `$.arr[N]` | `$.users[0]` | Array element by index |
 | Mixed | `$.users[0].name` | Object and array segments combined |
 
-Keys containing `.` or `[` are not supported (the path would be ambiguous).
+Keys containing `.`, spaces, or brackets are supported via bracket-notation paths (for example `$["a.b"]["c d"]`).
 
 ## Edit Operations
 
@@ -104,7 +104,7 @@ Copy the updated anchor (`$.version:c9`) into your edit and retry.
 ## Known Limitations
 
 - **No heuristic recovery**: The JSON engine does not implement the heuristic recovery layer (merge detection, Unicode normalization, etc.) present in the text-file engine. If an anchor is stale the agent must re-read and retry.
-- **Keys with `.` or `[`**: JSON keys containing these characters cannot be addressed — the path encoding is ambiguous.
+- **Quoted-key paths required for special keys**: keys containing `.`, spaces, or brackets must be addressed with bracket notation (for example `$["a.b"]`).
 - **Fail-fast validation**: Only the first mismatched anchor is reported per apply call.
 
 ## Integration with Existing Hashline
