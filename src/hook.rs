@@ -107,11 +107,10 @@ fn extract_read_file(cmd: &str) -> Option<String> {
     let re = regex::Regex::new(r"hashline\s+(json-)?read\s+(.*)").ok()?;
     let caps = re.captures(first_line)?;
     let rest = caps.get(2)?.as_str();
-    // Tokens that aren't flags and aren't pure numbers
-    rest.split_whitespace()
+    let tokens: Vec<&str> = rest.split_whitespace()
         .filter(|t| !t.starts_with('-') && t.parse::<u64>().is_err())
-        .last()
-        .map(|s| s.to_string())
+        .collect();
+    tokens.last().map(|s| s.to_string())
 }
 
 /// Detect if the first line of cmd is `hashline (apply|json-apply)`
