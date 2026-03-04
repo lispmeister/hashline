@@ -6,18 +6,35 @@
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-/// Session file path: `/tmp/hashline_session_<ppid>`
+/// Session file path: `<tmp>/hashline_session_<ppid>`
 fn session_path() -> PathBuf {
-    let ppid = std::os::unix::process::parent_id();
-    PathBuf::from(format!("/tmp/hashline_session_{}", ppid))
+    let ppid = get_parent_pid();
+    let tmp = std::env::temp_dir();
+    tmp.join(format!("hashline_session_{}", ppid))
+}
+
+#[cfg(unix)]
+fn get_parent_pid() -> u32 {
+    std::os::unix::process::parent_id()
+}
+
+#[cfg(windows)]
+fn get_parent_pid() -> u32 {
+    // On Windows, use HASHLINE_SESSION_PID env var if set,
+    // otherwise fall back to current process ID
+    std::env::var("HASHLINE_SESSION_PID")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_else(|| std::process::id())
 }
 
 fn resolve_path(p: &str) -> String {
-    if p.starts_with('/') {
+    let path = Path::new(p);
+    if path.is_absolute() {
         p.to_string()
     } else {
         match std::env::current_dir() {
-            Ok(cwd) => format!("{}/{}", cwd.display(), p),
+            Ok(cwd) => cwd.join(p).display().to_string(),
             Err(_) => p.to_string(),
         }
     }
