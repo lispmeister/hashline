@@ -44,53 +44,36 @@ All edits validate against the original file before mutating disk.
 
 ## Current Priorities (2026-03-04)
 
-### High Priority — Agent Integration Improvements
-
-**Problem:** The install flow has several gaps that make it hard for agents (and humans) to get hashline working end-to-end with Claude Code.
-
-**Analysis:**
-
-1. **SKILL.md downloads hooks from wrong URLs** — Step 2 references `.claude/hooks/` on GitHub but the files live at `contrib/hooks/`. The skill fails on install.
-2. **Dead code in hook scripts** — Both `check_before_apply.sh:63` and `track_hashline.sh:92` have `rm -f /tmp/hashline_session_*` after an unconditional `exit`. Never executes.
-3. **No CLAUDE.md template injection** — The skill installs hooks that block the Edit tool but never injects the HASHLINE_TEMPLATE.md content into CLAUDE.md. The agent is blocked from editing but has no instructions on how to use hashline instead.
-4. **README doesn't mention CLAUDE.md setup** — Users who install via the skill don't know that CLAUDE.md instructions are also needed/provided.
-
-**Tasks:**
-
-- [x] Fix SKILL.md hook download URLs (`contrib/hooks/`, not `.claude/hooks/`)
-- [x] Remove dead code from both hook scripts
-- [x] Add CLAUDE.md template injection step to SKILL.md
-- [x] Update README agent integration section to mention CLAUDE.md setup
+### High Priority
+- _None — backlog clear._
 
 ### Medium Priority
-
 - Move hook logic into `hashline hook pre` / `hashline hook post` subcommands (eliminates bash scripts, jq dependency, absolute path requirement). Track in a separate PR.
 
 ### Low Priority
 - _None._
 
-### Recently Completed (2026-03-04)
+### Changelog
 
-- Agent integration improvements: fixed SKILL.md URLs, removed dead code from hooks, added CLAUDE.md template injection, updated README.
+#### 2026-03-04 — Agent integration improvements (v0.1.13)
+- Fixed SKILL.md hook download URLs (`contrib/hooks/`, not `.claude/hooks/`)
+- Removed dead code from both hook scripts (unreachable `rm` after `exit`)
+- Added CLAUDE.md template injection step to SKILL.md so agents learn the hashline workflow
+- Updated README: moved Agent Integration before Usage, added cross-link from Install, expanded skill description
+- Bumped to v0.1.13
 
-### Recently Completed (2026-02-26)
-
-- Fixed JSON anchor encoding for special keys (bracket notation) with new unit and CLI coverage.
-- Made `--emit-updated` previews reliable for replace-only edits and plumbed the logic through the CLI.
-- Added CLI/integration coverage for JSON workflows, including mismatch diagnostics and special-key round trips.
-- Refreshed README/AGENTS/HASHLINE_TEMPLATE docs to highlight `--input`, `--emit-updated`, and bracket notation.
-- Consolidated file reading via `util::read_normalized` and switched tests to `NamedTempFile`.
-- Updated CLI help, cli_help.md, and HASHLINE_HOOKS.md to push the `--emit-updated --input` workflow and bracket-notation anchors.
-- Added CLI usage instrumentation with opt-out env vars and documented log locations.
-- Enforced exclusive key/index handling for `insert_at_path` and documented the rule across templates.
-- Introduced tests/fixtures/json/large.json with regression coverage for deep anchors.
-- Documented the Homebrew tap automation plan in contrib/HOMEBREW_AUTOMATION.md.
-
-
-
+#### 2026-02-26 — JSON workflows, docs, and tooling (v0.1.12)
+- Fixed JSON anchor encoding for special keys (bracket notation) with new unit and CLI coverage
+- Made `--emit-updated` previews reliable for replace-only edits
+- Added CLI/integration coverage for JSON workflows, mismatch diagnostics, and special-key round trips
+- Refreshed README/AGENTS/HASHLINE_TEMPLATE docs for `--input`, `--emit-updated`, and bracket notation
+- Consolidated file reading via `util::read_normalized`; switched tests to `NamedTempFile`
+- Added CLI usage instrumentation with opt-out env vars
+- Enforced exclusive key/index handling for `insert_at_path`
+- Introduced tests/fixtures/json/large.json with regression coverage
+- Documented Homebrew tap automation plan
 
 ## Notes
 
 - Always reinstall (`cargo install --path .`) after touching `src/` so the `hashline` binary used by hooks/tests matches the workspace.
-- Prefer `hashline apply --input <file>` to avoid heredoc guardrails; `--emit-updated` is optional but should become the default verification path once the preview work above lands.
-
+- Prefer `hashline apply --input <file>` to avoid heredoc guardrails; `--emit-updated` returns fresh anchors without a follow-up read.
