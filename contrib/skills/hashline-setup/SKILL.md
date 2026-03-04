@@ -23,32 +23,19 @@ If the command fails, stop and tell the user to install hashline first:
 - From source: `cargo install --path .` (if in the hashline repo)
 - Script: `curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/install.sh | sh`
 
-## Step 2 — Install hook scripts
+Verify it supports the `hook` subcommand:
 
 ```bash
-mkdir -p .claude/hooks/tests
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/check_before_apply.sh \
-    -o .claude/hooks/check_before_apply.sh
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/track_hashline.sh \
-    -o .claude/hooks/track_hashline.sh
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/tests/test_hooks.sh \
-    -o .claude/hooks/tests/test_hooks.sh
-chmod +x .claude/hooks/check_before_apply.sh .claude/hooks/track_hashline.sh .claude/hooks/tests/test_hooks.sh
+hashline hook --help
 ```
 
-## Step 3 — Determine the absolute project path
+If this fails, the installed version is too old. Tell the user to upgrade.
 
-```bash
-pwd
-```
-
-Use this value as `PROJECT_ROOT` in hook command paths. Hook commands require absolute paths.
-
-## Step 4 — Merge hook configuration into the settings file
+## Step 2 — Merge hook configuration into the settings file
 
 Read the existing settings file (if it exists) and merge in the following structure, preserving any existing keys. Use the Write tool to write the result. Do not overwrite unrelated permissions or hooks.
 
-The hooks to add (substitute the real absolute path for `PROJECT_ROOT`):
+The hooks to add:
 
 ```json
 {
@@ -63,21 +50,21 @@ The hooks to add (substitute the real absolute path for `PROJECT_ROOT`):
         "matcher": "Edit",
         "hooks": [{
           "type": "command",
-          "command": "file=$(cat | jq -r '.tool_input.file_path // \"(unknown)\"'); printf 'BLOCKED: Do not use the Edit tool in this project.\\nFile: %s\\nUse: hashline apply\\nSee CLAUDE.md.\\n' \"$file\" >&2; exit 2"
+          "command": "hashline hook pre"
         }]
       },
       {
         "matcher": "NotebookEdit",
         "hooks": [{
           "type": "command",
-          "command": "echo 'BLOCKED: Do not use NotebookEdit in this project. Use hashline apply via Bash. See CLAUDE.md.' >&2; exit 2"
+          "command": "hashline hook pre"
         }]
       },
       {
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "bash PROJECT_ROOT/.claude/hooks/check_before_apply.sh"
+          "command": "hashline hook pre"
         }]
       }
     ],
@@ -86,7 +73,7 @@ The hooks to add (substitute the real absolute path for `PROJECT_ROOT`):
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "bash PROJECT_ROOT/.claude/hooks/track_hashline.sh"
+          "command": "hashline hook post"
         }]
       }
     ]
@@ -99,15 +86,21 @@ Rules for the merge:
 - If hook matchers for `Edit`, `NotebookEdit`, or `Bash` already exist, do not duplicate them — skip any that are already registered.
 - Write the final merged JSON to the target settings file with 2-space indentation.
 
-## Step 5 — Verify the hooks work
+## Step 3 — Verify the hooks work
+
+Download and run the test suite:
 
 ```bash
+mkdir -p .claude/hooks/tests
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/tests/test_hooks.sh \
+    -o .claude/hooks/tests/test_hooks.sh
+chmod +x .claude/hooks/tests/test_hooks.sh
 bash .claude/hooks/tests/test_hooks.sh
 ```
 
 All tests must pass (output ends with `N passed, 0 failed`). If any fail, report the failures and do not proceed.
 
-## Step 6 — Add hashline instructions to CLAUDE.md
+## Step 4 — Add hashline instructions to CLAUDE.md
 
 Download the hashline editing template and prepend it to the project's `CLAUDE.md` so Claude knows how to use hashline instead of the Edit tool.
 
@@ -120,17 +113,16 @@ Then read the project's existing `CLAUDE.md` (if it exists). Prepend everything 
 
 Do not duplicate — if `CLAUDE.md` already contains the line `NEVER edit a file you haven't read with \`hashline read\``, skip this step.
 
-## Step 7 — Report
+## Step 5 — Report
 
 Tell the user:
 - Which settings file was updated
-- The absolute path used for hook commands
 - That `CLAUDE.md` now contains hashline editing instructions
 - That hooks are now active for this session (a restart may be needed for Claude Code to reload settings)
 - How to test manually: `hashline apply` without a prior `hashline read` should be blocked
 
 ## Notes
 
-- `.claude/` is commonly gitignored. If the user wants the hook scripts tracked in git, they must `git add -f .claude/hooks/`.
+- No external scripts or absolute paths are needed — all hook logic is built into the `hashline` binary.
+- The test suite requires `jq` to be installed (for constructing test JSON; the hooks themselves do not use jq).
 - See `HASHLINE_HOOKS.md` in the hashline repo for full documentation.
-- The test suite requires `jq` to be installed.

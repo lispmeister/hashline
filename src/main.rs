@@ -10,12 +10,13 @@ mod error;
 mod format;
 mod hash;
 mod heuristics;
+mod hook;
 mod json;
 mod parse;
 mod usage;
 mod util;
 
-use cli::{Cli, Commands};
+use cli::{Cli, Commands, HookAction};
 use usage::{log_event, UsageEvent, UsageResult};
 use util::read_normalized;
 
@@ -416,6 +417,13 @@ fn main() {
                 emit_updated,
                 used_input_file,
             );
+        }
+        Commands::Hook { action } => {
+            let code = match action {
+                HookAction::Pre => hook::pre(),
+                HookAction::Post => hook::post(),
+            };
+            process::exit(code);
         }
     }
 }

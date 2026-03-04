@@ -48,12 +48,20 @@ All edits validate against the original file before mutating disk.
 - _None — backlog clear._
 
 ### Medium Priority
-- Move hook logic into `hashline hook pre` / `hashline hook post` subcommands (eliminates bash scripts, jq dependency, absolute path requirement). Track in a separate PR.
+- _None._
 
 ### Low Priority
 - _None._
 
 ### Changelog
+
+#### 2026-03-04 — Hook subcommands (v0.1.14)
+- Moved hook logic from bash scripts into `hashline hook pre` / `hashline hook post` subcommands
+- Eliminated jq dependency, external bash scripts, and absolute path requirements for hook registrations
+- Hook registrations now simply use `hashline hook pre` / `hashline hook post` (no paths needed)
+- `hashline hook pre` detects tool type from JSON shape (Edit/NotebookEdit/Bash)
+- Deleted `contrib/hooks/check_before_apply.sh` and `contrib/hooks/track_hashline.sh`
+- Updated SKILL.md (removed script download steps), HASHLINE_HOOKS.md, and test suite
 
 #### 2026-03-04 — Agent integration improvements (v0.1.13)
 - Fixed SKILL.md hook download URLs (`contrib/hooks/`, not `.claude/hooks/`)

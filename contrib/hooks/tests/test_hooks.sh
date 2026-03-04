@@ -1,22 +1,16 @@
 #!/bin/bash
-# Unit tests for .claude/hooks/check_before_apply.sh and track_hashline.sh
+# Unit tests for `hashline hook pre` and `hashline hook post`
 #
-# Tests feed synthetic PreToolUse / PostToolUse JSON to each script via stdin
+# Tests feed synthetic PreToolUse / PostToolUse JSON via stdin
 # and assert exit codes and session state.
 #
 # Run from the project root:
-#   bash .claude/hooks/tests/test_hooks.sh
+#   bash contrib/hooks/tests/test_hooks.sh
 #
 # Design note on PPID:
-#   Hook scripts key their session file on $PPID (the parent process PID).
-#   Pipes create an intermediate subprocess, so PPID inside a piped `bash script`
-#   does NOT equal $$ of this test script.  We avoid pipes and use temp files for
-#   stdin so that hooks always run as direct children of this script, keeping
-#   PPID == $$ throughout.
-
-HOOKS="$(cd "$(dirname "$0")/.." && pwd)"
-CHECK="$HOOKS/check_before_apply.sh"
-TRACK="$HOOKS/track_hashline.sh"
+#   Hook commands key their session file on getppid().
+#   We invoke hashline as a direct child of this script so that
+#   hashline's PPID == $$ throughout.
 
 # Session file the hooks will use (keyed by PPID = this script's $$ for direct children)
 SESSION="/tmp/hashline_session_$$"
@@ -33,8 +27,14 @@ reset_session() { rm -f "$SESSION" "${SESSION}.tmp"; }
 
 set_session() { printf '%s\n' "$@" > "$SESSION"; }
 
-# Build PreToolUse JSON
-pre_input() { jq -n --arg cmd "$1" '{"tool_input":{"command":$cmd}}'; }
+# Build PreToolUse JSON for Bash tool
+pre_bash_input() { jq -n --arg cmd "$1" '{"tool_input":{"command":$cmd}}'; }
+
+# Build PreToolUse JSON for Edit tool
+pre_edit_input() { jq -n --arg fp "$1" '{"tool_input":{"file_path":$fp,"old_string":"x","new_string":"y"}}'; }
+
+# Build PreToolUse JSON for NotebookEdit tool (no command, no file_path)
+pre_notebook_input() { jq -n '{"tool_input":{"notebook_path":"/tmp/nb.ipynb","new_source":"x"}}'; }
 
 # Build PostToolUse JSON
 post_input() {
@@ -43,20 +43,20 @@ post_input() {
         '{"tool_input":{"command":$cmd},"tool_response":{"isError":$err}}'
 }
 
-# Run a hook as a direct child (stdin from temp file, not a pipe) so PPID == $$
+# Run hashline hook as a direct child (stdin from temp file, not a pipe) so PPID == $$
 run_hook() {
-    local script="$1" input="$2"
+    local subcmd="$1" input="$2"
     printf '%s' "$input" > "$STDIN_TMP"
-    bash "$script" < "$STDIN_TMP"
+    hashline hook "$subcmd" < "$STDIN_TMP"
 }
 
 ok()   { printf 'PASS  %s\n' "$1"; pass=$((pass+1)); }
 bad()  { printf 'FAIL  %s\n' "$1"; [ $# -gt 1 ] && printf '      %s\n' "${@:2}"; fail=$((fail+1)); }
 
 expect() {
-    local name="$1" input="$2" script="$3" expected_exit="$4" stderr_pat="${5:-}"
+    local name="$1" input="$2" subcmd="$3" expected_exit="$4" stderr_pat="${5:-}"
     local actual_exit=0 actual_stderr STDERR_TMP; STDERR_TMP=$(mktemp)
-    run_hook "$script" "$input" > /dev/null 2>"$STDERR_TMP" || actual_exit=$?
+    run_hook "$subcmd" "$input" > /dev/null 2>"$STDERR_TMP" || actual_exit=$?
     actual_stderr=$(cat "$STDERR_TMP"); rm -f "$STDERR_TMP"
 
     if [ "$actual_exit" -ne "$expected_exit" ]; then
@@ -70,7 +70,7 @@ expect() {
     ok "$name"
 }
 
-track() { run_hook "$TRACK" "$1" > /dev/null 2>&1; }
+track() { run_hook post "$1" > /dev/null 2>&1; }
 
 session_has()   { grep -qxF "$1" "$SESSION" 2>/dev/null; }
 session_lacks() { ! grep -qxF "$1" "$SESSION" 2>/dev/null; }
@@ -84,33 +84,45 @@ assert() {
     fi
 }
 
-# ── check_before_apply.sh ─────────────────────────────────────────────────────
+# ── PreToolUse: Edit and NotebookEdit blocking ──────────────────────────────
 
-printf '\n=== check_before_apply.sh ===\n\n'
+printf '\n=== hashline hook pre (Edit/NotebookEdit blocking) ===\n\n'
+
+reset_session
+expect "Edit tool is blocked" \
+    "$(pre_edit_input '/tmp/some_file.rs')" pre 2 "BLOCKED: Do not use the Edit tool"
+
+reset_session
+expect "NotebookEdit tool is blocked" \
+    "$(pre_notebook_input)" pre 2 "BLOCKED: Do not use NotebookEdit"
+
+# ── PreToolUse: read-before-apply (Bash tool) ───────────────────────────────
+
+printf '\n=== hashline hook pre (read-before-apply) ===\n\n'
 
 reset_session
 expect "non-apply command is allowed" \
-    "$(pre_input 'cargo build')" "$CHECK" 0
+    "$(pre_bash_input 'cargo build')" pre 0
 
 reset_session
 expect "apply without prior read is blocked" \
-    "$(pre_input 'hashline apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.rs", "edits": []}
-EOF')" "$CHECK" 2 "has not been read"
+EOF')" pre 2 "has not been read"
 
 reset_session
 set_session "read:/tmp/hashline_test_file.rs"
 expect "apply after read is allowed" \
-    "$(pre_input 'hashline apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.rs", "edits": []}
-EOF')" "$CHECK" 0
+EOF')" pre 0
 
 reset_session
 set_session "stale:/tmp/hashline_test_file.rs"
 expect "apply on stale file is blocked" \
-    "$(pre_input 'hashline apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.rs", "edits": []}
-EOF')" "$CHECK" 2 "stale"
+EOF')" pre 2 "stale"
 
 # --input variant: path extracted from JSON file
 reset_session
@@ -118,7 +130,7 @@ TMPJSON=$(mktemp /tmp/test_edits_XXXXXX.json)
 printf '{"path": "/tmp/hashline_test_file.rs", "edits": []}' > "$TMPJSON"
 set_session "read:/tmp/hashline_test_file.rs"
 expect "--input variant allowed when file is read" \
-    "$(pre_input "hashline apply --input $TMPJSON")" "$CHECK" 0
+    "$(pre_bash_input "hashline apply --input $TMPJSON")" pre 0
 rm -f "$TMPJSON"
 
 # Relative path in apply JSON → resolved against PWD, matched against absolute in session
@@ -126,34 +138,34 @@ reset_session
 ABS_FILE="$PWD/relative_test_dummy.rs"
 set_session "read:$ABS_FILE"
 expect "relative path in apply JSON resolved to match absolute in session" \
-    "$(pre_input 'hashline apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline apply << '"'"'EOF'"'"'
 {"path": "relative_test_dummy.rs", "edits": []}
-EOF')" "$CHECK" 0
+EOF')" pre 0
 
 reset_session
 expect "json-apply without prior read is blocked" \
-    "$(pre_input 'hashline json-apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline json-apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.json", "edits": []}
-EOF')" "$CHECK" 2 "has not been read"
+EOF')" pre 2 "has not been read"
 
 reset_session
 set_session "read:/tmp/hashline_test_file.json"
 expect "json-apply after read is allowed" \
-    "$(pre_input 'hashline json-apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline json-apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.json", "edits": []}
-EOF')" "$CHECK" 0
+EOF')" pre 0
 
 reset_session
 set_session "stale:/tmp/hashline_test_file.json"
 expect "json-apply on stale file is blocked" \
-    "$(pre_input 'hashline json-apply << '"'"'EOF'"'"'
+    "$(pre_bash_input 'hashline json-apply << '"'"'EOF'"'"'
 {"path": "/tmp/hashline_test_file.json", "edits": []}
-EOF')" "$CHECK" 2 "stale"
+EOF')" pre 2 "stale"
 
 
-# ── track_hashline.sh ─────────────────────────────────────────────────────────
+# ── PostToolUse: track_hashline ──────────────────────────────────────────────
 
-printf '\n=== track_hashline.sh ===\n\n'
+printf '\n=== hashline hook post ===\n\n'
 
 reset_session
 track "$(post_input "hashline read /tmp/hashline_test_file.rs")"

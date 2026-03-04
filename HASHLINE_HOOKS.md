@@ -33,7 +33,7 @@ If you use Claude Code, the fastest way to set up hashline hooks in any project 
 /hashline-setup
 ```
 
-This installs the hook scripts, registers them in `.claude/settings.local.json`, and runs the test suite to verify everything works. See `.claude/skills/hashline-setup/SKILL.md` for the full instructions the skill executes.
+This registers the hooks in `.claude/settings.local.json` and runs the test suite to verify everything works. See `contrib/skills/hashline-setup/SKILL.md` for the full instructions the skill executes.
 
 To install the skill globally (available in all your projects):
 
@@ -46,20 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/s
 
 ## Installation
 
-### 1. Copy the hook scripts
-
-```sh
-mkdir -p .claude/hooks
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/track_hashline.sh \
-    -o .claude/hooks/track_hashline.sh
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/check_before_apply.sh \
-    -o .claude/hooks/check_before_apply.sh
-chmod +x .claude/hooks/track_hashline.sh .claude/hooks/check_before_apply.sh
-```
-
-Or copy them manually from this repo's `contrib/hooks/` directory.
-
-### 2. Add the hook registrations to `.claude/settings.json`
+### 1. Add the hook registrations to `.claude/settings.json`
 
 If `.claude/` is gitignored in your project (common), use `settings.local.json` instead.
 
@@ -71,21 +58,21 @@ If `.claude/` is gitignored in your project (common), use `settings.local.json` 
         "matcher": "Edit",
         "hooks": [{
           "type": "command",
-          "command": "file=$(cat | jq -r '.tool_input.file_path // \"(unknown)\"'); printf 'BLOCKED: Do not use the Edit tool in this project.\\nFile: %s\\nUse: hashline apply\\nSee CLAUDE.md.\\n' \"$file\" >&2; exit 2"
+          "command": "hashline hook pre"
         }]
       },
       {
         "matcher": "NotebookEdit",
         "hooks": [{
           "type": "command",
-          "command": "echo 'BLOCKED: Do not use NotebookEdit in this project. Use hashline apply via Bash. See CLAUDE.md.' >&2; exit 2"
+          "command": "hashline hook pre"
         }]
       },
       {
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "bash /absolute/path/to/.claude/hooks/check_before_apply.sh"
+          "command": "hashline hook pre"
         }]
       }
     ],
@@ -94,7 +81,7 @@ If `.claude/` is gitignored in your project (common), use `settings.local.json` 
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "bash /absolute/path/to/.claude/hooks/track_hashline.sh"
+          "command": "hashline hook post"
         }]
       }
     ]
@@ -102,9 +89,9 @@ If `.claude/` is gitignored in your project (common), use `settings.local.json` 
 }
 ```
 
-Replace `/absolute/path/to` with the absolute path to your project root. Relative paths are not supported in hook commands because the working directory may vary.
+No absolute paths or external scripts needed — all hook logic is built into the `hashline` binary.
 
-### 3. Add permissions for hashline commands
+### 2. Add permissions for hashline commands
 
 In the same `settings.json` or `settings.local.json`, ensure hashline is allowed:
 
@@ -120,7 +107,7 @@ In the same `settings.json` or `settings.local.json`, ensure hashline is allowed
 
 ## How session tracking works
 
-The two Bash hook scripts share a session file at `/tmp/hashline_session_<PPID>`, where `PPID` is the process ID of the Claude Code process (which is the parent of all hook subprocesses). This gives each Claude Code session its own isolated tracking state.
+The hook subcommands share a session file at `/tmp/hashline_session_<PPID>`, where `PPID` is the process ID of the Claude Code process (which is the parent of the hook process). This gives each Claude Code session its own isolated tracking state.
 
 **Entries in the session file:**
 
@@ -142,6 +129,16 @@ The two Bash hook scripts share a session file at `/tmp/hashline_session_<PPID>`
    read:<file>
 ```
 
+## Tool detection
+
+`hashline hook pre` detects which tool triggered the hook from the JSON shape:
+
+- If `tool_input.file_path` exists → **Edit tool** → block (exit 2)
+- If `tool_input.command` exists → **Bash tool** → check read-before-apply
+- Otherwise → **NotebookEdit** → block (exit 2)
+
+This means all three PreToolUse matchers can use the same `hashline hook pre` command.
+
 ## Known limitations
 
 **PPID-based session isolation** works correctly when a single Claude Code process manages the session. It has two edge cases:
@@ -150,7 +147,7 @@ The two Bash hook scripts share a session file at `/tmp/hashline_session_<PPID>`
 
 2. **Worktrees**: Each Claude Code process in a separate worktree gets its own PPID, so they do not share session state. This is the desired behavior.
 
-**Path normalization**: The hooks resolve relative file paths against `$PWD` (the working directory of the hook process). For `hashline read src/main.rs` and `hashline apply` with `"path": "src/main.rs"`, both resolve to the same absolute path. If for some reason the working directory differs between the read and the apply commands, the lookup may fail. The safe approach is to use the same path format (absolute or relative from project root) consistently.
+**Path normalization**: The hooks resolve relative file paths against the current working directory. For `hashline read src/main.rs` and `hashline apply` with `"path": "src/main.rs"`, both resolve to the same absolute path. If for some reason the working directory differs between the read and the apply commands, the lookup may fail. The safe approach is to use the same path format (absolute or relative from project root) consistently.
 
 **Heredoc path extraction**: When `hashline apply` is called with a heredoc, the hook extracts the `"path"` field from the embedded JSON using a regex. This works for standard single-file payloads. If the JSON is minified, deeply nested, or the `path` key is on the same line as other fields in an unusual order, extraction may fail — in which case the hook allows the apply through and relies on hashline's own anchor verification to catch stale anchors.
 
@@ -164,6 +161,6 @@ A test suite is included at `contrib/hooks/tests/test_hooks.sh`. Run it from the
 bash contrib/hooks/tests/test_hooks.sh
 ```
 
-The tests feed synthetic PreToolUse/PostToolUse JSON to the scripts and verify exit codes and session state. No external test framework is required.
+The tests feed synthetic PreToolUse/PostToolUse JSON to `hashline hook pre` and `hashline hook post` and verify exit codes and session state. The test harness requires `jq` for constructing test JSON (the hooks themselves do not).
 
-**Design note on test isolation**: Hook scripts key their session file on `$PPID`. Test scripts must invoke hooks as direct children (not inside pipes or command substitutions) to ensure `PPID == $$`. The test harness uses temporary files for stdin/stderr capture instead of pipes to preserve this invariant.
+**Design note on test isolation**: Hook subcommands key their session file on `getppid()`. Test scripts must invoke `hashline` as direct children (not inside pipes or command substitutions) to ensure the PPID equals the test script's PID. The test harness uses temporary files for stdin capture instead of pipes to preserve this invariant.

@@ -153,4 +153,26 @@ Exit codes: 0 = success, 1 = hash mismatch, 2 = other error",
         #[arg(long)]
         emit_updated: bool,
     },
+    /// Claude Code hook handlers (read-before-apply enforcement)
+    #[command(
+        long_about = "Subcommands that implement Claude Code PreToolUse and PostToolUse hooks.\n\n\
+These replace the external bash hook scripts and eliminate the jq dependency.\n\n\
+Register in .claude/settings.json:\n\
+  PreToolUse/Edit:         hashline hook pre\n\
+  PreToolUse/NotebookEdit: hashline hook pre\n\
+  PreToolUse/Bash:         hashline hook pre\n\
+  PostToolUse/Bash:        hashline hook post"
+    )]
+    Hook {
+        #[command(subcommand)]
+        action: HookAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum HookAction {
+    /// PreToolUse hook: blocks Edit/NotebookEdit, enforces read-before-apply
+    Pre,
+    /// PostToolUse hook: tracks hashline read/apply session state
+    Post,
 }
