@@ -27,11 +27,11 @@ If the command fails, stop and tell the user to install hashline first:
 
 ```bash
 mkdir -p .claude/hooks/tests
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/hooks/check_before_apply.sh \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/check_before_apply.sh \
     -o .claude/hooks/check_before_apply.sh
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/hooks/track_hashline.sh \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/track_hashline.sh \
     -o .claude/hooks/track_hashline.sh
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/.claude/hooks/tests/test_hooks.sh \
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/hooks/tests/test_hooks.sh \
     -o .claude/hooks/tests/test_hooks.sh
 chmod +x .claude/hooks/check_before_apply.sh .claude/hooks/track_hashline.sh .claude/hooks/tests/test_hooks.sh
 ```
@@ -107,11 +107,25 @@ bash .claude/hooks/tests/test_hooks.sh
 
 All tests must pass (output ends with `N passed, 0 failed`). If any fail, report the failures and do not proceed.
 
-## Step 6 — Report
+## Step 6 — Add hashline instructions to CLAUDE.md
+
+Download the hashline editing template and prepend it to the project's `CLAUDE.md` so Claude knows how to use hashline instead of the Edit tool.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/HASHLINE_TEMPLATE.md \
+    -o /tmp/hashline_template.md
+```
+
+Then read the project's existing `CLAUDE.md` (if it exists). Prepend everything in `/tmp/hashline_template.md` **after the `---` line** (the content below the frontmatter separator) to the top of `CLAUDE.md`. If `CLAUDE.md` does not exist, create it with just the template content (after the `---`).
+
+Do not duplicate — if `CLAUDE.md` already contains the line `NEVER edit a file you haven't read with \`hashline read\``, skip this step.
+
+## Step 7 — Report
 
 Tell the user:
 - Which settings file was updated
 - The absolute path used for hook commands
+- That `CLAUDE.md` now contains hashline editing instructions
 - That hooks are now active for this session (a restart may be needed for Claude Code to reload settings)
 - How to test manually: `hashline apply` without a prior `hashline read` should be blocked
 

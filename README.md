@@ -72,6 +72,43 @@ Pre-built binaries for macOS (Apple Silicon, Intel), Linux (x86_64, ARM64), and 
 cargo install --path .
 ```
 
+> **Using with Claude Code or another AI agent?** The binary alone doesn't enforce hashline edits — you also need to set up agent hooks. See [Agent Integration](#agent-integration) immediately below.
+
+## Agent Integration
+
+Hashline works with any AI coding agent that accepts system-prompt instructions: Claude Code, Cursor, Windsurf, and others.
+
+### Claude Code (recommended)
+
+**1. Install the skill** (one-time, global — available in all your projects):
+
+```sh
+mkdir -p ~/.claude/skills/hashline-setup
+curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/skills/hashline-setup/SKILL.md \
+    -o ~/.claude/skills/hashline-setup/SKILL.md
+```
+
+**2. Run the skill inside Claude Code** (this is a Claude Code slash command, not a shell command):
+
+```
+/hashline-setup
+```
+
+The skill:
+- Installs hook scripts that **block Claude's native Edit tool and require `hashline apply` for all file edits**
+- Registers the hooks in `.claude/settings.local.json`
+- Prepends hashline editing instructions to your project's `CLAUDE.md` so Claude knows the workflow
+- Runs the test suite to verify everything works
+
+Without this setup, Claude falls back to standard text replacement and you lose hashline's safety guarantees. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for manual installation and [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) for the raw instructions template.
+
+### Other agents (Cursor, Windsurf, etc.)
+
+1. Install the `hashline` binary
+2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `AGENTS.md` or equivalent rules file — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
+
+The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
+
 ## Usage
 
 ### The full loop
@@ -211,38 +248,6 @@ Provide either `key` (object insertion) or `index` (array insertion); specifying
 ```json
 {"delete_path": {"anchor": "$.scripts.test:3b"}}
 ```
-
-## Agent Integration
-
-Hashline works with any AI coding agent that accepts system-prompt instructions: Claude Code, Cursor, Windsurf, and others.
-
-### Claude Code (recommended)
-
-**1. Install the skill** (one-time, global — available in all your projects):
-
-```sh
-mkdir -p ~/.claude/skills/hashline-setup
-curl -fsSL https://raw.githubusercontent.com/lispmeister/hashline/main/contrib/skills/hashline-setup/SKILL.md \
-    -o ~/.claude/skills/hashline-setup/SKILL.md
-```
-
-**2. Run it in any project:**
-
-```
-/hashline-setup
-```
-
-The skill installs the hook scripts, registers them in `.claude/settings.local.json`, and runs the test suite to verify. See [`HASHLINE_HOOKS.md`](HASHLINE_HOOKS.md) for what the hooks do and how to install them manually.
-
-
-See also [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) for instructions for other agents.
-
-### Other agents (Cursor, Windsurf, etc.)
-
-1. Install the `hashline` binary
-2. Paste the instructions from [`HASHLINE_TEMPLATE.md`](HASHLINE_TEMPLATE.md) (below the `---`) at the **top** of your project's `AGENTS.md` or equivalent rules file — before any other content. Agents weight earlier instructions more heavily; placing these first ensures `hashline` takes precedence over default edit tools.
-
-The template covers the full workflow: reading files, applying edits (heredoc or `--input` file), batching multiple edits, recovering from hash mismatches, using `--emit-updated` to reduce round-trips, and when to use `replace` vs anchor ops.
 
 ## Usage Logging
 

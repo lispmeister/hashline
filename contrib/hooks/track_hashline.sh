@@ -88,5 +88,3 @@ elif $is_apply && [ "$is_error" = "false" ]; then
 fi
 
 exit 0
-
-rm -f /tmp/hashline_session_*

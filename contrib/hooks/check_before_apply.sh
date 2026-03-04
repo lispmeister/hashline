@@ -59,5 +59,3 @@ fi
 printf 'BLOCKED: "%s" has not been read with `hashline read` in this session.\n' "$file" >&2
 printf 'Run:\n  hashline read %s\nbefore applying edits.\n' "$file" >&2
 exit 2
-
-rm -f /tmp/hashline_session_*

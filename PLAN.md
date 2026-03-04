@@ -42,15 +42,37 @@ All edits validate against the original file before mutating disk.
 - Hash mismatch detection returns updated anchors with context.
 - Heuristics strip accidental prefixes, restore indentation, handle merged lines, and normalize confusable characters.
 
-## Current Priorities (2026-02-26)
+## Current Priorities (2026-03-04)
 
-### High Priority
-- _None — backlog clear after docs/templates audit (2026-02-26)._
+### High Priority — Agent Integration Improvements
+
+**Problem:** The install flow has several gaps that make it hard for agents (and humans) to get hashline working end-to-end with Claude Code.
+
+**Analysis:**
+
+1. **SKILL.md downloads hooks from wrong URLs** — Step 2 references `.claude/hooks/` on GitHub but the files live at `contrib/hooks/`. The skill fails on install.
+2. **Dead code in hook scripts** — Both `check_before_apply.sh:63` and `track_hashline.sh:92` have `rm -f /tmp/hashline_session_*` after an unconditional `exit`. Never executes.
+3. **No CLAUDE.md template injection** — The skill installs hooks that block the Edit tool but never injects the HASHLINE_TEMPLATE.md content into CLAUDE.md. The agent is blocked from editing but has no instructions on how to use hashline instead.
+4. **README doesn't mention CLAUDE.md setup** — Users who install via the skill don't know that CLAUDE.md instructions are also needed/provided.
+
+**Tasks:**
+
+- [x] Fix SKILL.md hook download URLs (`contrib/hooks/`, not `.claude/hooks/`)
+- [x] Remove dead code from both hook scripts
+- [x] Add CLAUDE.md template injection step to SKILL.md
+- [x] Update README agent integration section to mention CLAUDE.md setup
 
 ### Medium Priority
-- _None — usage logging and insert semantics addressed (2026-02-26)._
+
+- Move hook logic into `hashline hook pre` / `hashline hook post` subcommands (eliminates bash scripts, jq dependency, absolute path requirement). Track in a separate PR.
+
 ### Low Priority
-- _None — backlog cleared (2026-02-26)._
+- _None._
+
+### Recently Completed (2026-03-04)
+
+- Agent integration improvements: fixed SKILL.md URLs, removed dead code from hooks, added CLAUDE.md template injection, updated README.
+
 ### Recently Completed (2026-02-26)
 
 - Fixed JSON anchor encoding for special keys (bracket notation) with new unit and CLI coverage.
