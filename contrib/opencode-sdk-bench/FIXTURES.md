@@ -1,81 +1,57 @@
-# Minimal Comprehensive Test Suite
+# Benchmark Fixture Suite
+The fixture corpus is split into two sets:
+- `fixtures/` (default): public regression fixtures for routine runs.
+- `fixtures-holdout/`: holdout fixtures for anti-overfitting checks.
 
-This test suite replaces 27 tests (9 cases × 3 sizes) with **6 carefully designed challenges** that stress-test editing capabilities while minimizing API costs.
+## Status
 
-## Design Principles
+- Core family coverage is defined and documented.
+- New default fixtures and holdout fixtures were added.
+- Additional medium/hard scenarios can still be added, but planning for family coverage is complete.
 
-1. **Ambiguity** - Multiple similar lines/keys to test precise targeting
-2. **Nesting** - Deep structures requiring careful navigation
-3. **Whitespace** - Indentation-sensitive fixes
-4. **Context** - Similar names in different scopes
-5. **Multi-format** - Embedded code blocks
+## Scenario Families
 
-## Test Cases
+Current families include:
+1. Ambiguity and nearby-target confusion
+2. Nested JSON migrations
+3. Whitespace-sensitive edits
+4. Scope collisions and similar identifiers
+5. Multi-format docs (Markdown with embedded JSON)
+6. Stale-context and disturbance-sensitive edits
+7. Large-file targeted edits
+8. Confusable-identifier traps
+9. Simple refactor/rename style edits
 
-### 1. md-ambiguous-lines (Markdown)
-**File**: `original.md` (24 lines)
-**Challenge**: Multiple lines containing "Mode:" - agent must use context to identify correct line
-**Task**: Change `Mode: staging` to `Mode: production` in the Production Mode section (not Development!)
-**What it tests**: Line disambiguation using section headers as anchors
+## Inventory
 
-### 2. json-deep-nest (JSON)
-**File**: `original.json` (30 lines)
-**Challenge**: Deeply nested structure with duplicate keys (`ssl` appears twice)
-**Task**: Change `$.service.config.database.replica.ssl` from `false` to `true`
-**What it tests**: JSONPath navigation, handling duplicate keys at different levels
+Default set:
+- `md-ambiguous-lines`
+- `json-deep-nest`
+- `rust-whitespace`
+- `ts-similar-names`
+- `json-array-puzzle`
+- `md-json-embedded`
+- `stale-context-trap`
+- `refactor-rename-endpoint`
+- `large-file-settings`
+- `confusable-identifiers`
+- `json-migration-rules`
+- `ambiguous-nearby-blocks`
+Holdout set:
+- `holdout-json-target`
+- `holdout-ts-scope`
+## Validator Expectations
 
-### 3. rust-whitespace (Rust)
-**File**: `original.rs` (35 lines)  
-**Challenge**: Purely whitespace-based fix (no content change)
-**Task**: Re-indent line from 4 spaces to 8 spaces in `set` method
-**What it tests**: Exact whitespace preservation, indentation handling
+Prefer fixture-local `validator.mjs` checks for medium/hard scenarios so we can detect:
+- right text in wrong place,
+- wrong symbol edited when names are similar,
+- collateral modifications outside expected mutation window.
 
-### 4. ts-similar-names (TypeScript)
-**File**: `original.ts` (36 lines)
-**Challenge**: Multiple functions with nearly identical names and signatures
-**Task**: Modify `UserValidator.validateUserEmail()` class method, not the standalone function
-**What it tests**: Scope awareness, distinguishing class methods from functions
+## Run-Time Options
 
-### 5. json-array-puzzle (JSON)
-**File**: `original.json` (27 lines)
-**Challenge**: Arrays with objects having duplicate "name" fields
-**Task**: Find "build" step inside "deploy" stage (not the "build" stage itself!)
-**What it tests**: Array indexing, nested object access, name collision handling
+- `--fixture-set default` for routine regressions
+- `--fixture-set holdout` for anti-overfitting checks
+- `--fixture-set all` for broad sweeps
+- `--randomize --seed <n>` for deterministic shuffle order
+- `--disturbance --disturbance-probability <0..1>` for stale-context stress testing
 
-### 6. md-json-embedded (Markdown + JSON)
-**File**: `original.md` (28 lines)
-**Challenge**: Markdown file containing multiple JSON code blocks
-**Task**: Change timeout in **production** JSON block from 3000 to 10000 (not development!)
-**What it tests**: Multi-format editing, code fence awareness, value disambiguation
-
-## Coverage Summary
-
-| Format | Tests | Key Skills Tested |
-|--------|-------|-------------------|
-| Markdown | 2 | Context-based targeting, embedded JSON |
-| JSON | 2 | Deep nesting, arrays, duplicate keys |
-| Rust | 1 | Whitespace precision |
-| TypeScript | 1 | Scope disambiguation |
-
-## Cost Impact
-
-**Old setup**: 27 test cases per run  
-**New setup**: 6 test cases per run  
-**Savings**: 78% reduction in API calls
-
-**Estimated cost per run** (using gpt-5.3-codex @ $0.0047/attempt):
-- Old: 27 × $0.0047 = **$0.127**
-- New: 6 × $0.0047 = **$0.028**
-- **Savings**: $0.099 per run (78% cheaper)
-
-## Why This Works
-
-Each test is a **surgical puzzle** designed to expose common editing failures:
-
-1. **Anchoring mistakes** - Editing wrong instance of similar text
-2. **Navigation errors** - Getting lost in deep structures  
-3. **Whitespace bugs** - Breaking indentation
-4. **Scope confusion** - Mixing up standalone vs class members
-5. **Format blindness** - Missing code fence boundaries
-
-These 6 tests catch **more bugs per dollar** than 27 simple boolean flips.

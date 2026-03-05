@@ -1,77 +1,87 @@
-# OpenCode Benchmark Dashboard - Design Review & Plan
+# OpenCode Benchmark Rig - Plan (2026-03-04)
+## Goal
 
-## Overview
+Produce defensible evidence about Hashline utility under realistic editing conditions, across:
+- correctness (did the right change happen),
+- safety (did anything else get corrupted),
+- protocol integrity (was hashline mode actually followed),
+- efficiency (time/cost per verified success).
 
-Single-page dashboard for running LLM editing benchmarks comparing hashline vs raw_replace vs patch modes. Built with vanilla JS frontend + Node.js backend with SQLite persistence.
+## Current Status
 
-## Architecture
+This plan is now finalized at the planning/docs level.
 
-- **Backend**: `server.js` - HTTP server on port 4177, spawns benchmark CLI as child process
-- **Frontend**: Static HTML/JS in `web/`, polls APIs every 2 seconds
-- **Storage**: SQLite for run history, JSON files for raw results
+- Planning complete: benchmark phases, metrics, acceptance criteria, and reporting expectations are defined.
+- Documentation complete: methodology, fixture strategy, and baseline caveats are written down.
+- Implementation incomplete: BB-01/02/03 work is partially implemented but currently unstable in `src/cli.ts`, `src/runner.ts`, and `web/app.js`.
 
-## What Works
+## Benchmark Program
 
-- Model catalog loads from `opencode models` CLI
-- Searchable model selector with radio buttons
-- Run configuration (modes, sizes, repeats)
-- Progress bar with live updates
-- Log display with word-wrap
-- Start/Stop controls
-- Admin DB rebuild/drop
+### Phase 1 - Measurement Integrity (P0)
+#### BB-01: Enforce mode compliance in runner
+Status: `in_progress`
+- For `hashline` mode, require observed `hashline read/json-read` before apply and apply via `hashline apply/json-apply`.
+- Emit protocol failure reasons per attempt.
+- Separate `task_pass`, `protocol_pass`, and `overall_pass`.
 
-## Current Issues
+#### BB-02: Add compliance/safety summaries to dashboard and API
+Status: `in_progress`
+- Add summary fields for protocol and corruption metrics.
+- Add filtering by mode/model/scenario family.
 
-| Issue | Root Cause |
-|-------|------------|
-| "Providers and Models" empty | Server wasn't running when tested; works when server is up |
-| "Previous Runs" shows no stats | `renderRuns()` works but may fail silently if DB empty or tab switching issue |
+#### BB-03: Dashboard run-flow robustness
+Status: `in_progress`
+- Keep run controls robust when model selection or run state changes.
+- Surface explicit blocked reasons when run cannot start.
 
-## Tasks
+### Phase 2 - Realistic Scenario Expansion (P1)
 
-### High Priority
+#### BB-04: Scenario family coverage
+Status: `partially_done`
+- Expanded default fixtures were added (stale-context, refactor/rename, large-file, confusables, JSON migration, ambiguity traps).
+- Continue to 12-20 total scenarios with broader coverage and balancing.
+#### BB-05: Disturbance mode
+Status: `in_progress`
+- Add optional disturbance between read/apply to test fail-closed behavior and recovery quality.
+#### BB-06: Holdout and randomized variants
+Status: `partially_done`
+- Holdout fixture set exists.
+- Randomization/plumbing still needs stabilization and verification.
 
-- [x] Fix model list not loading on page load (timing/server startup issue)
-- [x] Fix Previous Runs tab not displaying run statistics table
+### Phase 3 - Verification Quality (P1)
+#### BB-07: Per-scenario validators
+Status: `partially_done`
+- Validator hooks exist and initial fixture-local validators were added.
+- Expand validator coverage to all medium/hard scenarios.
+#### BB-08: Silent corruption detection
+Status: `in_progress`
+- Corruption labeling/reporting is designed and partially wired.
+- Needs full validation after runner stabilization.
 
-### Medium Priority
+### Phase 4 - Reporting Users Can Trust (P2)
 
-- [x] Add aggregate statistics view (pass rate by mode, model comparison)
-- [x] Add detailed run drill-down (click row to see per-case results)
+#### BB-09: Methodology publication
+Status: `done`
+- `METHODOLOGY.md` defines metrics, interpretation bounds, and claim limits.
+#### BB-10: Utility scorecard
+Status: `done`
+- `scripts/scorecard.mjs` exists for weighted utility summaries.
+#### BB-11: Reproducible baseline snapshots
+Status: `done`
+- Dated baseline and publish script exist (`BASELINE_2026-03-04.md`, `scripts/publish-baseline.mjs`).
 
-### Low Priority
+## Evidence Gates
 
-- [x] Add export results as CSV/JSON from Previous Runs
-- [x] Add auto-refresh toggle for live status during runs
+Treat README-level product claims as blocked until all are true:
+- Protocol-compliant execution is hard-enforced and visible in reports.
+- Disturbance + holdout runs are included in baseline sweeps.
+- Silent corruption metrics are captured and non-trivial.
+- Repeated runs show stable ranges (confidence-aware reporting).
 
-## Recent Updates (2026-02-27)
+## Immediate Next Execution Order
 
-### Cost Optimization - Minimal Test Suite
+1. Stabilize `src/cli.ts`, `src/runner.ts`, and `web/app.js`.
+2. Re-enable end-to-end run smoke checks (CLI + dashboard + API + DB).
+3. Run compact matrix (1 model x 2 modes x small x repeat=1) as regression check.
+4. Run expanded baseline and publish scorecard + dated snapshot.
 
-Replaced 27 trivial tests (9 cases × 3 sizes) with **6 carefully designed puzzle-style challenges**:
-
-1. **md-ambiguous-lines** - Multiple similar "Mode:" lines requiring context awareness
-2. **json-deep-nest** - Deep nesting with duplicate "ssl" keys at different levels
-3. **rust-whitespace** - Pure indentation fix (4→8 spaces) with no content change
-4. **ts-similar-names** - Distinguish class method from standalone function with same name
-5. **json-array-puzzle** - Arrays with duplicate "build" names in different scopes
-6. **md-json-embedded** - Markdown with multiple JSON blocks, fix correct timeout value
-
-**Cost Impact**: 78% reduction in API calls (~$0.099 savings per run)  
-**Coverage**: Same format diversity (MD, JSON, Rust, TS) with higher quality challenges
-
-See `FIXTURES.md` for detailed test case descriptions.
-
-## Completed Features (2026-02-27)
-
-All planned dashboard features have been implemented:
-
-1. **Model loading with retry** - Automatically retries if server isn't ready at page load
-2. **Error handling** - Better connection error messages for all API calls
-3. **Aggregate statistics** - Shows pass rates grouped by mode and by model
-4. **Run drill-down** - Click any run row to see detailed per-case results in a modal
-5. **Export functionality** - Export runs as CSV or JSON for external analysis
-6. **Auto-refresh toggle** - User can pause/resume the 2-second polling
-7. **Model pricing display** - Shows cost per model, highlights FREE models
-8. **Live cost tracking** - Real-time cost accumulation during benchmark runs
-9. **Cost persistence** - Total costs saved with run statistics in SQLite and JSON

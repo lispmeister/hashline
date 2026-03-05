@@ -1,0 +1,10 @@
+{
+  "rules": [
+    { "id": "allow", "enabled": true, "level": "strict" },
+    { "id": "audit", "enabled": true, "level": "warn" },
+    { "id": "block", "enabled": false, "level": "strict" }
+  ],
+  "defaults": {
+    "level": "warn"
+  }
+}

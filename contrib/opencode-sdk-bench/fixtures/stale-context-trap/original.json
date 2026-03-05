@@ -1,0 +1,10 @@
+{
+  "service": {
+    "name": "checkout",
+    "retry": {
+      "maxAttempts": 5,
+      "backoffMs": 250
+    },
+    "timeoutMs": 8000
+  }
+}

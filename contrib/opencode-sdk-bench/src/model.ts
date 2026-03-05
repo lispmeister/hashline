@@ -21,10 +21,13 @@ interface OpenCodeClientLike {
 }
 
 export function parseModelString(value: string): ModelRef {
-  const [providerID, modelID] = value.split("/");
-  if (!providerID || !modelID) {
+  const slashIndex = value.indexOf("/");
+  if (slashIndex <= 0 || slashIndex === value.length - 1) {
     throw new Error(`Invalid model '${value}'. Use provider/model format.`);
   }
+
+  const providerID = value.slice(0, slashIndex);
+  const modelID = value.slice(slashIndex + 1);
   return { providerID, modelID, label: `${providerID}/${modelID}` };
 }
 

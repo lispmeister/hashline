@@ -222,6 +222,12 @@
             <label><input type="checkbox" name="size" value="mid" checked /> mid</label>
             <label><input type="checkbox" name="size" value="large" checked /> large</label>
             <label>repeats <input id="repeats" type="number" min="1" value="1" style="width:70px" /></label>
+            <label>fixture set <select id="fixture-set"><option value="default" selected>default</option><option value="holdout">holdout</option><option value="all">all</option></select></label>
+            <label><input type="checkbox" id="randomize" /> randomize</label>
+            <label>seed <input id="seed" type="number" value="42" style="width:80px" /></label>
+            <label><input type="checkbox" id="disturbance" /> disturbance</label>
+            <label>disturbance p <input id="disturbance-probability" type="number" min="0" max="1" step="0.1" value="0.5" style="width:70px" /></label>
+            <label><input type="checkbox" id="enforce-protocol" checked /> enforce protocol</label>
             <button id="start-run" class="primary">RUN</button>
             <button id="stop-run">STOP</button>
           </div>
@@ -263,6 +269,11 @@
           <div class="row" style="margin-bottom: 12px;">
             <button id="export-csv">Export as CSV</button>
             <button id="export-json">Export as JSON</button>
+          </div>
+          <div class="row" style="margin-bottom: 12px;">
+            <label>Filter mode <input id="filter-mode" placeholder="hashline/raw_replace/patch" /></label>
+            <label>Filter model <input id="filter-model" placeholder="provider/model" /></label>
+            <label>Filter family <input id="filter-family" placeholder="ambiguity/json_migration/..." /></label>
           </div>
           <div id="runs"></div>
         </section>

@@ -6,6 +6,7 @@ interface EventEnvelope {
   sessionID?: string;
   properties?: Record<string, unknown>;
   error?: { message?: string; name?: string };
+  command?: string;
 }
 
 interface EventStream {
@@ -36,6 +37,14 @@ function classifyError(ev: EventEnvelope): boolean {
   return Boolean(ev.error);
 }
 
+function extractCommand(ev: EventEnvelope): string | undefined {
+  const direct = typeof ev.command === "string" ? ev.command : undefined;
+  if (direct && direct.length > 0) return direct;
+  const fromProps = ev.properties && typeof ev.properties.command === "string" ? String(ev.properties.command) : undefined;
+  if (fromProps && fromProps.length > 0) return fromProps;
+  return undefined;
+}
+
 export async function startEventCapture(client: OpenCodeClientLike): Promise<EventCapture> {
   const allEvents: EventRecord[] = [];
   let running = true;
@@ -54,6 +63,7 @@ export async function startEventCapture(client: OpenCodeClientLike): Promise<Eve
         type: flags.length > 0 ? `${ev.type ?? "event"}:${flags.join(",")}` : ev.type ?? "event",
         sessionID: ev.sessionID,
         message: ev.error?.message,
+        command: extractCommand(ev),
         raw: ev,
       });
     }

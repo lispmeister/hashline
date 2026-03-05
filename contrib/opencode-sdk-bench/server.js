@@ -29,6 +29,7 @@ let activeRun = {
   completedJobs: 0,
   totalJobs: 0,
   lastError: null,
+  blockedReason: null,
   logs: [],
 }
 
@@ -94,13 +95,20 @@ function elapsedFromDates(startedAt, finishedAt) {
 function summarizeReport(report, fileName) {
   const results = Array.isArray(report.results) ? report.results : []
   const attempts = []
+  const families = new Set()
   for (const item of results) {
     const list = Array.isArray(item.attempts) ? item.attempts : []
     attempts.push(...list)
+    if (item.family) families.add(String(item.family))
   }
   const totalAttempts = attempts.length
   const completedAttempts = totalAttempts
   const passCount = attempts.filter((attempt) => Boolean(attempt.passed)).length
+  const taskPassCount = attempts.filter((attempt) => Boolean(attempt.taskPassed)).length
+  const protocolPassCount = attempts.filter((attempt) => Boolean(attempt.protocolPassed)).length
+  const overallPassCount = attempts.filter((attempt) => Boolean(attempt.overallPassed)).length
+  const corruptionCount = attempts.filter((attempt) => Boolean(attempt.corruptionDetected)).length
+  const protocolFailCount = attempts.reduce((acc, attempt) => acc + ((attempt.protocolFailureReasons || []).length || 0), 0)
   let errorCount = 0
   let retryCount = 0
   let totalCost = 0
@@ -114,14 +122,19 @@ function summarizeReport(report, fileName) {
       elapsedTimeMs += numberOrZero(metrics.durationMs)
     }
   }
-
   return {
     file: fileName,
     mode: report.config?.mode || report.mode || "unknown",
     model: modelLabel(report.model || report.config?.model),
+    families: Array.from(families).join(","),
     totalAttempts,
     completedAttempts,
     passCount,
+    taskPassCount,
+    protocolPassCount,
+    overallPassCount,
+    corruptionCount,
+    protocolFailCount,
     errorCount,
     retryCount,
     totalCost,
@@ -135,14 +148,19 @@ function normalizeProgress(value) {
   if (Array.isArray(value.results)) {
     return summarizeReport(value, "progress.json")
   }
-
   return {
     file: "progress.json",
     mode: value.mode || value.config?.mode || "unknown",
     model: modelLabel(value.model || value.config?.model),
+    families: value.families || null,
     totalAttempts: numberOrZero(value.totalAttempts ?? value.total ?? value.attemptsTotal),
     completedAttempts: numberOrZero(value.completedAttempts ?? value.completed ?? value.attemptsCompleted),
     passCount: numberOrZero(value.passCount ?? value.passes),
+    taskPassCount: numberOrZero(value.taskPassCount),
+    protocolPassCount: numberOrZero(value.protocolPassCount),
+    overallPassCount: numberOrZero(value.overallPassCount),
+    corruptionCount: numberOrZero(value.corruptionCount),
+    protocolFailCount: numberOrZero(value.protocolFailCount),
     errorCount: numberOrZero(value.errorCount ?? value.errors),
     retryCount: numberOrZero(value.retryCount ?? value.retries),
     totalCost: numberOrZero(value.totalCost ?? value.cost),
@@ -169,9 +187,15 @@ function initDb() {
       file TEXT UNIQUE NOT NULL,
       mode TEXT NOT NULL,
       model TEXT NOT NULL,
+      families TEXT,
       total_attempts INTEGER NOT NULL,
       completed_attempts INTEGER NOT NULL,
       pass_count INTEGER NOT NULL,
+      task_pass_count INTEGER DEFAULT 0,
+      protocol_pass_count INTEGER DEFAULT 0,
+      overall_pass_count INTEGER DEFAULT 0,
+      corruption_count INTEGER DEFAULT 0,
+      protocol_fail_count INTEGER DEFAULT 0,
       error_count INTEGER NOT NULL,
       retry_count INTEGER NOT NULL,
       elapsed_time_ms INTEGER NOT NULL,
@@ -183,28 +207,47 @@ function initDb() {
   `)
   
   // Migrate existing schema if needed
-  try {
-    db.exec(`ALTER TABLE runs ADD COLUMN total_cost REAL DEFAULT 0`)
-  } catch (e) {
-    // Column already exists
-  }
+  const migrations = [
+    "ALTER TABLE runs ADD COLUMN total_cost REAL DEFAULT 0",
+    "ALTER TABLE runs ADD COLUMN families TEXT",
+    "ALTER TABLE runs ADD COLUMN task_pass_count INTEGER DEFAULT 0",
+    "ALTER TABLE runs ADD COLUMN protocol_pass_count INTEGER DEFAULT 0",
+    "ALTER TABLE runs ADD COLUMN overall_pass_count INTEGER DEFAULT 0",
+    "ALTER TABLE runs ADD COLUMN corruption_count INTEGER DEFAULT 0",
+    "ALTER TABLE runs ADD COLUMN protocol_fail_count INTEGER DEFAULT 0",
+  ]
+  for (const sql of migrations) {
+    try {
+      db.exec(sql)
+    } catch (e) {
+      // Column likely already exists
+    }
+}
 }
 
 function insertSummary(summary) {
   const stmt = db.prepare(`
     INSERT INTO runs (
-      file, mode, model, total_attempts, completed_attempts, pass_count, error_count, retry_count, elapsed_time_ms,
+      file, mode, model, families, total_attempts, completed_attempts, pass_count, task_pass_count,
+      protocol_pass_count, overall_pass_count, corruption_count, protocol_fail_count, error_count, retry_count, elapsed_time_ms,
       total_cost, started_at, finished_at, inserted_at
     ) VALUES (
-      @file, @mode, @model, @totalAttempts, @completedAttempts, @passCount, @errorCount, @retryCount, @elapsedTimeMs,
+      @file, @mode, @model, @families, @totalAttempts, @completedAttempts, @passCount, @taskPassCount,
+      @protocolPassCount, @overallPassCount, @corruptionCount, @protocolFailCount, @errorCount, @retryCount, @elapsedTimeMs,
       @totalCost, @startedAt, @finishedAt, @insertedAt
     )
     ON CONFLICT(file) DO UPDATE SET
       mode=excluded.mode,
       model=excluded.model,
+      families=excluded.families,
       total_attempts=excluded.total_attempts,
       completed_attempts=excluded.completed_attempts,
       pass_count=excluded.pass_count,
+      task_pass_count=excluded.task_pass_count,
+      protocol_pass_count=excluded.protocol_pass_count,
+      overall_pass_count=excluded.overall_pass_count,
+      corruption_count=excluded.corruption_count,
+      protocol_fail_count=excluded.protocol_fail_count,
       error_count=excluded.error_count,
       retry_count=excluded.retry_count,
       elapsed_time_ms=excluded.elapsed_time_ms,
@@ -259,15 +302,38 @@ async function resetDbAndRepopulate() {
   return ingestAllRunsFromJson()
 }
 
-function listRunsFromDb() {
+function listRunsFromDb(filters = {}) {
+  const clauses = []
+  const params = []
+
+  if (filters.mode) {
+    clauses.push("mode = ?")
+    params.push(String(filters.mode))
+  }
+  if (filters.model) {
+    clauses.push("model = ?")
+    params.push(String(filters.model))
+  }
+  if (filters.family) {
+    clauses.push("families LIKE ?")
+    params.push(`%${String(filters.family)}%`)
+  }
+
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : ""
   const stmt = db.prepare(`
     SELECT
       file,
       mode,
       model,
+      families,
       total_attempts AS totalAttempts,
       completed_attempts AS completedAttempts,
       pass_count AS passCount,
+      task_pass_count AS taskPassCount,
+      protocol_pass_count AS protocolPassCount,
+      overall_pass_count AS overallPassCount,
+      corruption_count AS corruptionCount,
+      protocol_fail_count AS protocolFailCount,
       error_count AS errorCount,
       retry_count AS retryCount,
       total_cost AS totalCost,
@@ -275,11 +341,12 @@ function listRunsFromDb() {
       started_at AS startedAt,
       finished_at AS finishedAt
     FROM runs
+    ${where}
     ORDER BY COALESCE(started_at, inserted_at) DESC
     LIMIT ?
   `)
 
-  return stmt.all(RUN_LIMIT)
+  return stmt.all(...params, RUN_LIMIT)
 }
 
 function loadModelCatalog() {
@@ -438,7 +505,7 @@ function startRunJob(config) {
     try {
       for (const mode of config.modes) {
         appendLog(
-          `Starting mode=${mode} model=${config.model} sizes=${config.sizes.join(",")} repeats=${config.repeats}`
+          `Starting mode=${mode} model=${config.model} sizes=${config.sizes.join(",")} repeats=${config.repeats} set=${config.fixtureSet || "default"} randomize=${Boolean(config.randomize)} disturbance=${Boolean(config.disturbance)}`
         )
         const reportPath = await runSingleBenchmark({ ...config, mode })
         appendLog(`Completed mode=${mode} model=${config.model} -> ${reportPath}`)
@@ -472,10 +539,20 @@ function runSingleBenchmark(config) {
       config.sizes.join(","),
       "--repeats",
       String(config.repeats),
+      "--fixture-set",
+      String(config.fixtureSet || "default"),
       "--model",
       config.model,
+      "--disturbance-probability",
+      String(config.disturbanceProbability ?? 0.5),
+      "--seed",
+      String(config.seed ?? 42),
+      "--enforce-protocol",
+      String(config.enforceProtocol !== false),
       "--progress",
       "runs/progress.json",
+      ...(config.randomize ? ["--randomize"] : []),
+      ...(config.disturbance ? ["--disturbance"] : []),
     ]
 
     const child = spawn("npm", args, { cwd: ROOT_DIR })
@@ -567,140 +644,152 @@ async function serveStatic(reqPath, res) {
   }
 }
 
-await ensureRunsDir()
-initDb()
-
+async function bootstrap() {
+  await ensureRunsDir()
+  initDb()
 // Load existing logs from active.log into memory
-try {
-  const logContent = await fs.readFile(LOG_FILE, "utf8")
-  const lines = logContent.split("\n").filter((line) => line.trim().length > 0)
-  activeRun.logs = lines.slice(-LOG_TAIL_LIMIT) // Keep last N lines
-} catch (error) {
-  // No existing log file, start fresh
-  activeRun.logs = []
-}
-
-const seedCount = db.prepare("SELECT COUNT(*) AS c FROM runs").get().c
-if (seedCount === 0) {
-  await ingestAllRunsFromJson()
-}
-const server = http.createServer(async (req, res) => {
-  const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`)
   try {
-    if (requestUrl.pathname === "/api/models") {
-      const providers = loadModelCatalog()
-      sendJson(res, 200, { providers })
-      return
-    }
-    if (requestUrl.pathname === "/api/progress") {
-      const progress = await loadProgress()
-      sendJson(res, 200, { progress })
-      return
-    }
-
-    if (requestUrl.pathname === "/api/status") {
-      sendJson(res, 200, {
-        running: activeRun.running,
-        startedAt: activeRun.startedAt,
-        finishedAt: activeRun.finishedAt,
-        config: activeRun.config,
-        completedJobs: activeRun.completedJobs,
-        totalJobs: activeRun.totalJobs,
-        lastError: activeRun.lastError,
-      })
-      return
-    }
-
-    if (requestUrl.pathname === "/api/log") {
-      const tail = Number.parseInt(requestUrl.searchParams.get("tail") || "120", 10)
-      const limit = Number.isInteger(tail) && tail > 0 ? Math.min(tail, LOG_TAIL_LIMIT) : 120
-      const lines = activeRun.logs.slice(Math.max(0, activeRun.logs.length - limit))
-      sendJson(res, 200, { lines })
-      return
-    }
-    if (requestUrl.pathname === "/api/runs") {
-      const runs = listRunsFromDb()
-      sendJson(res, 200, { runs })
-      return
-    }
-
-    if (requestUrl.pathname === "/api/run/detail" && req.method === "GET") {
-      const fileName = requestUrl.searchParams.get("file")
-      if (!fileName) {
-        sendJson(res, 400, { error: "Missing file parameter" })
-        return
-      }
-      const filePath = path.join(RUNS_DIR, fileName)
-      if (!filePath.startsWith(RUNS_DIR) || !fileName.endsWith(".json")) {
-        sendJson(res, 403, { error: "Invalid file path" })
-        return
-      }
-      try {
-        const raw = await fs.readFile(filePath, "utf8")
-        const report = JSON.parse(raw)
-        sendJson(res, 200, { report })
-      } catch (error) {
-        sendJson(res, 404, { error: "File not found" })
-      }
-      return
-    }
-
-    if (requestUrl.pathname === "/api/run" && req.method === "POST") {
-      const body = await parseBody(req)
-      const model = String(body.model || "").trim()
-      const modes = sanitizeList(body.modes, ["hashline", "raw_replace"])
-      const sizes = sanitizeList(body.sizes, ["small", "mid", "large"])
-      const repeats = Math.max(1, Number.parseInt(String(body.repeats ?? 1), 10) || 1)
-
-      if (!model) {
-        sendJson(res, 400, { error: "Select one model" })
-        return
-      }
-
-      startRunJob({ model, modes, sizes, repeats })
-      sendJson(res, 200, { ok: true })
-      return
-    }
-
-    if (requestUrl.pathname === "/api/run/stop" && req.method === "POST") {
-      const stopped = stopRunJob()
-      sendJson(res, 200, { ok: true, stopped })
-      return
-    }
-
-    if (requestUrl.pathname === "/api/admin/rebuild" && req.method === "POST") {
-      const count = await resetDbAndRepopulate()
-      sendJson(res, 200, { ok: true, ingested: count })
-      return
-    }
-
-    if (requestUrl.pathname === "/api/admin/drop" && req.method === "POST") {
-      if (db) {
-        db.close()
-        db = null
-      }
-      await fs.rm(DB_FILE, { force: true })
-      await fs.rm(`${DB_FILE}-wal`, { force: true })
-      await fs.rm(`${DB_FILE}-shm`, { force: true })
-      initDb()
-      sendJson(res, 200, { ok: true })
-      return
-    }
-    await serveStatic(requestUrl.pathname, res)
+    const logContent = await fs.readFile(LOG_FILE, "utf8")
+    const lines = logContent.split("\n").filter((line) => line.trim().length > 0)
+    activeRun.logs = lines.slice(-LOG_TAIL_LIMIT) // Keep last N lines
   } catch (error) {
-    sendJson(res, 500, { error: String(error && error.message ? error.message : error) })
+    // No existing log file, start fresh
+    activeRun.logs = []
   }
-})
+const seedCount = db.prepare("SELECT COUNT(*) AS c FROM runs").get().c
+  if (seedCount === 0) {
+    await ingestAllRunsFromJson()
+  }
+const server = http.createServer(async (req, res) => {
+    const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`)
+    try {
+      if (requestUrl.pathname === "/api/models") {
+        const providers = loadModelCatalog()
+        sendJson(res, 200, { providers })
+        return
+      }
+      if (requestUrl.pathname === "/api/progress") {
+        const progress = await loadProgress()
+        sendJson(res, 200, { progress })
+        return
+      }
+    if (requestUrl.pathname === "/api/status") {
+        sendJson(res, 200, {
+          running: activeRun.running,
+          startedAt: activeRun.startedAt,
+          finishedAt: activeRun.finishedAt,
+          config: activeRun.config,
+          completedJobs: activeRun.completedJobs,
+          totalJobs: activeRun.totalJobs,
+          lastError: activeRun.lastError,
+          blockedReason: activeRun.blockedReason,
+        })
+        return
+      }
+    if (requestUrl.pathname === "/api/log") {
+        const tail = Number.parseInt(requestUrl.searchParams.get("tail") || "120", 10)
+        const limit = Number.isInteger(tail) && tail > 0 ? Math.min(tail, LOG_TAIL_LIMIT) : 120
+        const lines = activeRun.logs.slice(Math.max(0, activeRun.logs.length - limit))
+        sendJson(res, 200, { lines })
+        return
+      }
+      if (requestUrl.pathname === "/api/runs") {
+        const mode = requestUrl.searchParams.get("mode") || undefined
+        const model = requestUrl.searchParams.get("model") || undefined
+        const family = requestUrl.searchParams.get("family") || undefined
+        const runs = listRunsFromDb({ mode, model, family })
+        sendJson(res, 200, { runs })
+        return
+      }
+    if (requestUrl.pathname === "/api/run/detail" && req.method === "GET") {
+        const fileName = requestUrl.searchParams.get("file")
+        if (!fileName) {
+          sendJson(res, 400, { error: "Missing file parameter" })
+          return
+        }
+        const filePath = path.join(RUNS_DIR, fileName)
+        if (!filePath.startsWith(RUNS_DIR) || !fileName.endsWith(".json")) {
+          sendJson(res, 403, { error: "Invalid file path" })
+          return
+        }
+        try {
+          const raw = await fs.readFile(filePath, "utf8")
+          const report = JSON.parse(raw)
+          sendJson(res, 200, { report })
+        } catch (error) {
+          sendJson(res, 404, { error: "File not found" })
+        }
+        return
+      }
+    if (requestUrl.pathname === "/api/run" && req.method === "POST") {
+        const body = await parseBody(req)
+        const model = String(body.model || "").trim()
+        const modes = sanitizeList(body.modes, ["hashline", "raw_replace"])
+        const sizes = sanitizeList(body.sizes, ["small", "mid", "large"])
+        const repeats = Math.max(1, Number.parseInt(String(body.repeats ?? 1), 10) || 1)
+        const disturbance = Boolean(body.disturbance)
+        const disturbanceProbability = Math.max(0, Math.min(1, Number(body.disturbanceProbability ?? 0.5) || 0.5))
+        const fixtureSet = ["default", "holdout", "all"].includes(String(body.fixtureSet)) ? String(body.fixtureSet) : "default"
+        const randomize = Boolean(body.randomize)
+        const seed = Number.parseInt(String(body.seed ?? 42), 10) || 42
+      const enforceProtocol = body.enforceProtocol === undefined ? true : Boolean(body.enforceProtocol)
+        const reasons = []
+        if (!model) reasons.push("select_model")
+        if (modes.length === 0) reasons.push("select_mode")
+        if (sizes.length === 0) reasons.push("select_size")
+      if (activeRun.running) reasons.push("run_in_progress")
+        if (reasons.length > 0) {
+          activeRun.blockedReason = reasons.join(",")
+          sendJson(res, 400, { error: "Cannot start run", reasons })
+          return
+        }
+      activeRun.blockedReason = null
+        startRunJob({ model, modes, sizes, repeats, disturbance, disturbanceProbability, fixtureSet, randomize, seed, enforceProtocol })
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    if (requestUrl.pathname === "/api/run/stop" && req.method === "POST") {
+        const stopped = stopRunJob()
+        sendJson(res, 200, { ok: true, stopped })
+        return
+      }
+    if (requestUrl.pathname === "/api/admin/rebuild" && req.method === "POST") {
+        const count = await resetDbAndRepopulate()
+        sendJson(res, 200, { ok: true, ingested: count })
+        return
+      }
+    if (requestUrl.pathname === "/api/admin/drop" && req.method === "POST") {
+        if (db) {
+          db.close()
+          db = null
+        }
+        await fs.rm(DB_FILE, { force: true })
+        await fs.rm(`${DB_FILE}-wal`, { force: true })
+        await fs.rm(`${DB_FILE}-shm`, { force: true })
+        initDb()
+        sendJson(res, 200, { ok: true })
+        return
+      }
+      await serveStatic(requestUrl.pathname, res)
+    } catch (error) {
+      sendJson(res, 500, { error: String(error && error.message ? error.message : error) })
+    }
+  })
 server.on("error", (error) => {
-  if (error && error.code === "EADDRINUSE") {
-    console.error(`Port ${PORT} is already in use. Stop the existing dashboard or set PORT.`)
+    if (error && error.code === "EADDRINUSE") {
+      console.error(`Port ${PORT} is already in use. Stop the existing dashboard or set PORT.`)
+      process.exit(1)
+      return
+    }
+  console.error(String(error && error.message ? error.message : error))
     process.exit(1)
-    return
-  }
+  })
+server.listen(PORT, () => {
+    console.log(`http://localhost:${PORT}`)
+  })
+}
 
+bootstrap().catch((error) => {
   console.error(String(error && error.message ? error.message : error))
   process.exit(1)
-})
-server.listen(PORT, () => {
-  console.log(`http://localhost:${PORT}`)
 })
