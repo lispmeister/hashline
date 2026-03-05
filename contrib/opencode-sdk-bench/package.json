@@ -21,7 +21,8 @@
     "run": "tsx src/cli.ts",
     "run:safe": "tsx src/run-with-guard.ts",
     "scorecard": "node scripts/scorecard.mjs",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node scripts/test.mjs"
   },
   "type": "module",
   "version": "0.0.0"

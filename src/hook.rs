@@ -341,12 +341,15 @@ mod tests {
 
     #[test]
     fn extract_input_supports_short_flag() {
-        let f = extract_apply_file("hashline apply -i /tmp/edits.json");
-        assert!(f.is_none());
+        let missing = std::env::temp_dir().join(format!("hashline-missing-input-{}-{}.json", std::process::id(), std::thread::current().name().unwrap_or("t")));
+        let _ = std::fs::remove_file(&missing);
+        let cmd = format!("hashline apply -i {}", missing.display());
 
-        let tokens = tokenize_shell_line("hashline apply -i /tmp/edits.json");
+        let f = extract_apply_file(&cmd);
+        assert!(f.is_none());
+        let tokens = tokenize_shell_line(&cmd);
         let got = extract_input_flag(&tokens, 2);
-        assert_eq!(got.as_deref(), Some("/tmp/edits.json"));
+        assert_eq!(got.as_deref(), Some(missing.to_string_lossy().as_ref()));
     }
 
     #[test]
