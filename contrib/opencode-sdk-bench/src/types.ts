@@ -1,18 +1,20 @@
 export type BenchmarkMode = "hashline" | "raw_replace" | "patch";
-
 export type FixtureSize = "small" | "mid" | "large";
 
-export type FixtureCase =
-  | "markdown_text"
-  | "markdown_embedded_json"
-  | "markdown_embedded_typescript"
-  | "typescript"
-  | "typescript_embedded_json"
-  | "json"
-  | "rust"
-  | "rust_embedded_json"
-  | "polyglot_complex";
+export type FixtureSet = "default" | "holdout" | "all";
 
+export type ScenarioFamily =
+  | "ambiguity"
+  | "json_migration"
+  | "whitespace"
+  | "scope"
+  | "array_targeting"
+  | "multiformat"
+  | "stale_context"
+  | "large_file"
+  | "confusable_chars"
+  | "refactor"
+  | "other";
 export interface BenchmarkConfig {
   workspaceDir: string;
   fixturesDir: string;
@@ -21,32 +23,37 @@ export interface BenchmarkConfig {
   repeats: number;
   sizes: FixtureSize[];
   model?: string;
+  disturbance?: boolean;
+  disturbanceProbability?: number;
+  fixtureSet?: FixtureSet;
+  randomize?: boolean;
+  seed?: number;
+  enforceProtocol?: boolean;
 }
-
 export interface ModelRef {
   providerID: string;
   modelID: string;
   label: string;
 }
-
 export interface FixtureSpec {
   size: FixtureSize;
-  caseId: FixtureCase;
+  caseId: string;
+  family: ScenarioFamily;
   extension: string;
   basePath: string;
   originalPath: string;
   mutatedPath: string;
   taskPath: string;
+  tags: string[];
 }
-
 export interface EventRecord {
   timestamp: number;
   type: string;
   sessionID?: string;
   message?: string;
+  command?: string;
   raw: unknown;
 }
-
 export interface AttemptMetrics {
   durationMs: number;
   retries: number;
@@ -56,25 +63,32 @@ export interface AttemptMetrics {
   tokenReasoning?: number;
   tokenTotal?: number;
   cost?: number;
+  changedLines?: number;
+  expectedChangedLines?: number;
+  unexpectedChangedLines?: number;
 }
-
 export interface AttemptResult {
   attempt: number;
   passed: boolean;
   reason: string;
+  taskPassed: boolean;
+  protocolPassed: boolean;
+  overallPassed: boolean;
+  protocolFailureReasons: string[];
+  corruptionDetected: boolean;
+  corruptionReason?: string;
   metrics: AttemptMetrics;
   sessionID: string;
   events: EventRecord[];
 }
-
 export interface CaseResult {
   size: FixtureSize;
-  caseId: FixtureCase;
+  caseId: string;
+  family: ScenarioFamily;
   mode: BenchmarkMode;
   model: ModelRef;
   attempts: AttemptResult[];
 }
-
 export interface RunReport {
   startedAt: string;
   finishedAt: string;
@@ -82,3 +96,4 @@ export interface RunReport {
   model: ModelRef;
   results: CaseResult[];
 }
+

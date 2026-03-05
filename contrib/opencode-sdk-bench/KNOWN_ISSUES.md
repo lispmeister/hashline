@@ -1,63 +1,26 @@
-# Known Issues
+# Known Issues (2026-03-04)
 
-## RUN Button - OpenCode SDK Permission Prompts
+## 1) Benchmark-metric expansion branch is unstable
 
-### Issue
-When you click RUN in the dashboard, the test starts but then hangs waiting for OpenCode SDK permission prompts.
+Recent edits for protocol/safety metric expansion are not fully stabilized yet:
+- `contrib/opencode-sdk-bench/src/cli.ts`
+- `contrib/opencode-sdk-bench/src/runner.ts`
+- `contrib/opencode-sdk-bench/web/app.js`
 
-### Root Cause
-The OpenCode SDK runs in interactive mode and asks for permission to access directories like `/tmp/*`. This blocks the benchmark runner which expects non-interactive execution.
+Impact:
+- Build and dashboard behavior may be unreliable until syntax/runtime stabilization is completed.
 
-### Symptoms
-- Dashboard shows "Running" status
-- `runs/active.log` shows the CLI started
-- No `progress.json` file is created
-- OpenCode log (`~/.local/share/opencode/log/`) shows `permission.asked` events
-- Test never completes
+## 2) OpenCode permission prompts can still block unattended runs
 
-### Current Workaround
+Some environments still trigger interactive permission prompts from the OpenCode stack.
 
-**Option 1: Grant permissions ahead of time**
-1. Run `opencode` CLI manually once
-2. Grant all requested permissions
-3. The SDK should remember the permissions
+Symptoms:
+- run status remains active without progress,
+- no meaningful attempt progression,
+- logs indicate permission requests.
 
-**Option 2: Configure non-interactive mode (if available)**
-Check OpenCode SDK documentation for:
-- Environment variables to disable prompts
-- Configuration file for pre-approved permissions
-- Non-interactive mode flags
+Mitigations:
+- pre-grant required permissions in an interactive setup pass,
+- ensure non-interactive/headless settings are configured where supported,
+- verify model/provider configuration before long benchmark sweeps.
 
-**Option 3: Use a different model provider**
-Test with Anthropic or Google models directly (not through OpenCode/Zen):
-```bash
-# This may work if you have direct API keys configured
-npm run run -- --mode hashline --sizes small --model anthropic/claude-3-5-haiku --repeats 1
-```
-
-### Temporary Fix Applied
-
-The server now kills stale OpenCode processes before starting a new run to prevent port conflicts:
-```javascript
-execSync("pkill -f 'opencode serve' 2>/dev/null || true")
-```
-
-However, this doesn't solve the permission prompt issue.
-
-### Needed Fix
-
-The benchmark runner needs to:
-1. Configure OpenCode SDK in non-interactive mode
-2. Pre-grant permissions programmatically
-3. Or use a permissions configuration file
-
-Check `@opencode-ai/sdk` documentation for:
-- `OPENCODE_NO_PROMPTS` environment variable
-- Permission configuration options
-- Headless/CI mode
-
-### Status
-
-**RUN button works correctly** - the issue is in OpenCode SDK configuration, not the dashboard.
-
-The test DOES start, but waits for user input that never comes in automated mode.

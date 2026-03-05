@@ -1,0 +1,8 @@
+{
+  "pipelines": [
+    { "name": "ingest", "enabled": true },
+    { "name": "transform", "enabled": true },
+    { "name": "publish", "enabled": true }
+  ],
+  "default": "transform"
+}
