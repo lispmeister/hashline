@@ -6,20 +6,9 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![Changelog](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-orange)](CHANGELOG.md)
 
-**AI coding agents fail at edits, not at reasoning.** Hashline fixes the interface.
-
-Instead of asking models to reproduce exact text or generate fragile diffs, Hashline tags each line with a short content hash. Models reference lines by `LINE:HASH` anchor — if the file changes, the hash changes, and stale edits are rejected before any corruption occurs.
+**Status: Abandoned.** After extensive testing with frontier models, we concluded that the hashline approach does not improve edit accuracy or performance. Frontier models already handle standard edit interfaces (string replacement, diffs) well enough that content-hash anchors provide no meaningful benefit. The added complexity is not justified.
 
 Based on the [Hashline concept by Can Bölük](https://blog.can.ac/2026/02/12/the-harness-problem/).
-
-## Results
-
-| Model | Without Hashline | With Hashline |
-|-------|-----------------|---------------|
-| Grok Code Fast | 6.7% | 68.3% (**10x**) |
-| All models | baseline | ~20% fewer output tokens |
-
-The improvement is largest for weaker models — Hashline makes cheap models viable for real editing tasks.
 
 ## How It Works
 
@@ -271,16 +260,11 @@ Provide either `key` (object insertion) or `index` (array insertion); specifying
 Hashline appends a one-line CSV record to `~/.local/state/hashline/usage.log` on macOS/Linux (or `%APPDATA%\hashline\usage.log` on Windows) after each command. Set `HASHLINE_USAGE_LOG` to override the location, or export `HASHLINE_DISABLE_USAGE_LOG=1` to skip logging entirely.
 
 
-## Why Not Diffs or String Replacement?
+## Why This Didn't Work
 
-| Approach | Failure mode |
-|----------|-------------|
-| **Patch/diff** | Strict formatting rules; 50%+ failure rate for weaker models |
-| **String replacement** | Requires character-perfect reproduction including whitespace |
-| **Neural merge** | Requires fine-tuning a separate 70B model |
-| **Hashline** | Model references anchors; heuristics recover from output artifacts |
+The original hypothesis (from [Can Bölük's research](https://blog.can.ac/2026/02/12/the-harness-problem/)) was that models fail at edits because the edit harness is too brittle, not because of reasoning limitations. Content-hash anchors were meant to provide a more robust interface.
 
-The key insight from Can Bölük's original research: models don't fail because they can't reason about code — they fail because the *edit harness* is too brittle. Hashline makes the harness robust.
+In practice, our testing showed that frontier models handle standard edit interfaces well enough. The anchor-based approach added protocol complexity without measurable accuracy gains. The heuristics needed to recover from model output artifacts (echoed prefixes, dropped indentation, merged lines) introduced their own failure modes.
 
 ## Testing
 
